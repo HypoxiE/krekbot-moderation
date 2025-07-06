@@ -33,7 +33,7 @@ import random
 import json
 import shutil
 from constants.global_constants import *
-from data.TOKENS import TOKENS
+from data.secrets.TOKENS import TOKENS
 
 import CoreMod
 
