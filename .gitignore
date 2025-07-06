@@ -1,0 +1,11 @@
+
+venv/
+
+__pycache__/
+*.pyc
+
+.env
+.secrets
+db_settings.py
+src/data/secrets/
+src/backups/

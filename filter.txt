@@ -1,0 +1,8 @@
++ /ModBot/**
+- /ModBot/venv/**
+- /ModBot/__pycache__/**
+- /ModBot/backups/**
+- /ModBot/.env
+- /ModBot/.secrets
+- /ModBot/*.pyc
+- *
