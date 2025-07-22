@@ -370,7 +370,7 @@ class MainBot(AnyBots):
 
 					if penalt.time_warn is None and penalt.time_end-datetime.datetime.now().timestamp()<=0:
 						penalt.time_end = None
-						penalt.time_warn = (self.TimeFormater("30d"))[0]
+						penalt.time_warn = self.TimeFormater("30d").timestamp
 
 
 					if (not penalt.time_warn is None) and (not penalt.time_end is None):
@@ -425,7 +425,7 @@ class MainBot(AnyBots):
 
 					if penalt.time_warn is None and penalt.time_end - datetime.datetime.now().timestamp() <= 0:
 						penalt.time_end = None
-						penalt.time_warn = (self.TimeFormater("30d"))[0]
+						penalt.time_warn = self.TimeFormater("30d").timestamp
 
 
 					if (not penalt.time_warn is None) and (not penalt.time_end is None):

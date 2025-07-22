@@ -1,6 +1,9 @@
 venv/
+nb_venv/
+pc_venv/
+docs/
 __pycache__/
 *.pyc
+.git/
 .env
-.secrets
 backups/
