@@ -729,9 +729,16 @@ class ModerModule(commands.Cog):
 						if not ext.domain or not ext.suffix:
 							return None
 						return f"{ext.domain}.{ext.suffix}".lower()
-					new_link = link if not "http" in link else extract_root_domain(link)
+					new_link = extract_root_domain(link)
 					if not new_link:
 						await ctx.send(embed = disnake.Embed(description = f'Некорректная ссылка!', colour = 0xff9900))
+						return 1
+
+					stmt = self.DataBaseManager.select(аllowed_domains_model).where(аllowed_domains_model.domain == new_link)
+					link_in_wl = (await session.execute(stmt)).scalars().first()
+
+					if link_in_wl is not None:
+						await ctx.send(embed = disnake.Embed(description = f'Этот домен уже есть в белом листе!', colour = 0xff9900))
 						return 1
 
 					domain = аllowed_domains_model(domain = new_link, initiator_id = ctx.author.id)
