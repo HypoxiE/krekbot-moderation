@@ -46,8 +46,8 @@ async def main():
 
 	try:
 		DataBase = await CoreMod.init_db()
-		#sup_bot = CoreMod.MainBot(DataBase, stop_event)
-		sup_bot = CoreMod.AnyBots(DataBase)
+		sup_bot = CoreMod.MainBot(DataBase, stop_event, task_start = False)
+		#sup_bot = CoreMod.AnyBots(DataBase)
 		all_bots = [sup_bot]
 
 		#НЕ СМЕЙ РАСКОММЕНТИРОВАТЬ

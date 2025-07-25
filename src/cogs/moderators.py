@@ -10,6 +10,7 @@ import math
 import random
 import json
 import shutil
+import tldextract
 
 translate = {"textmute":"Текстовый мут", "voicemute":"Голосовой мут", "ban":"Бан", "warning":"Предупреждение",\
 			 "time":"Время", "reason":"Причина", "changenick":"Сменить ник", "reprimand":"Выговор", "newnick":"Новый ник"}
@@ -683,4 +684,58 @@ class ModerModule(commands.Cog):
 					return 0
 				else:
 					await ctx.send(embed = disnake.Embed(description = f'Данный пользователь не имеет роли в ветке {branchid}', colour = 0xff9900))
+					return 1
+
+	@commands.slash_command(description="Позволяет добавить домен в белый список", name="добавить_ссылку", administrator=True)
+	async def add_domain(self, ctx: disnake.AppCmdInter, link: str = commands.Param(description="Укажите ссылку или домен", name="ссылка")):
+		async with self.DataBaseManager.session() as session:
+			async with session.begin():
+				staff_branches_model = self.DataBaseManager.model_classes['staff_branches']
+				аllowed_domains_model = self.DataBaseManager.model_classes['аllowed_domains']
+
+				admin_flag = False
+
+				stmt = (
+					self.DataBaseManager.select(staff_branches_model)
+					.options(
+						self.DataBaseManager.selectinload(staff_branches_model.users)
+					)
+					.where(
+						self.DataBaseManager.or_(
+							staff_branches_model.is_admin == True,
+							staff_branches_model.is_moder == True
+						)
+					)
+				)
+
+				branches = (await session.execute(stmt)).scalars().all()
+
+				for branch in branches:
+					for user in branch.users:
+						if ctx.author.id == user.user_id:
+							admin_flag = True
+							break
+					if admin_flag:
+						break
+
+				if not admin_flag:
+					await ctx.send(embed = disnake.Embed(description = f'У вас недостаточно полномочий, чтобы добавлять ссылку в белый лист. Обратитесь к любому модератору или разработчику.', colour = 0xff9900))
+					return 1
+
+				else:
+
+					def extract_root_domain(url):
+						ext = tldextract.extract(url)
+						if not ext.domain or not ext.suffix:
+							return None
+						return f"{ext.domain}.{ext.suffix}".lower()
+					new_link = link if not "http" in link else extract_root_domain(link)
+					if not new_link:
+						await ctx.send(embed = disnake.Embed(description = f'Некорректная ссылка!', colour = 0xff9900))
+						return 1
+
+					domain = аllowed_domains_model(domain = new_link, initiator_id = ctx.author.id)
+					session.add(domain)
+
+					await ctx.send(embed = disnake.Embed(description = f'Домен {new_link} успешно добавлен в белый список', colour = 0xff9900))
 					return 1

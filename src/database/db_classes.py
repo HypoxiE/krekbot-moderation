@@ -200,7 +200,13 @@ class StaffCuration(Base):
 		UniqueConstraint('apprentice_id', 'curator_id', 'branch_id', name='uq_apprentice_curator_branch'),
 	)
 
+class AllowedDomain(Base):
+	__tablename__ = "аllowed_domains"
+	id: Mapped[identificator_pk]
+	domain: Mapped[str] = mapped_column(Text, index=True, nullable=False, unique=True)
+	initiator_id: Mapped[discord_identificator]
 
 all_data = {
 	'base': Base
 }
+

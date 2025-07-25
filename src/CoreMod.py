@@ -17,13 +17,14 @@ from constants.global_constants import *
 from data.secrets.TOKENS import TOKENS
 from database.db_classes import all_data as DataBaseClasses
 from managers.DataBaseManager import DatabaseManager
-from managers.old_DataBaseManager import DatabaseManager as old_DatabaseManager
 from database.settings import config
 
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.schema import CreateTable
+
+import tldextract
 
 class AnyBots(commands.Bot):
 	'''
@@ -291,22 +292,25 @@ class MainBot(AnyBots):
 
 
 	'''
-	def __init__(self, DataBase, stop_event):
+	def __init__(self, DataBase, stop_event, task_start = True):
 		super().__init__(DataBase)
 		self.stop_event = stop_event
+		self.task_start = task_start
 
 	async def on_ready(self):
 		await super().on_ready()
 
-		self.CheckDataBases.cancel()
-		self.MakeBackups.cancel()
+		if self.task_start:
+			self.CheckDataBases.cancel()
+			self.MakeBackups.cancel()
 
-		self.MakeBackups.start()
-		self.CheckDataBases.start()
+			self.MakeBackups.start()
+			self.CheckDataBases.start()
 
 	async def BotOff(self):
-		self.CheckDataBases.cancel()
-		self.MakeBackups.cancel()
+		if self.task_start:
+			self.CheckDataBases.cancel()
+			self.MakeBackups.cancel()
 
 		self.stop_event.set()
 
@@ -515,9 +519,14 @@ class MainBot(AnyBots):
 			#/преды
 
 	async def on_message(self, msg):
+		
+		if msg.author.bot:
+			return 0
+
 		if msg.author.id == 479210801891115009 and msg.content == "botsoff":
 			await msg.reply(embed=disnake.Embed(description=f'Бот отключён', colour=0xff9900))
 			await self.BotOff()
+			return 0
 		if type(msg.channel).__name__!="DMChannel" and fnmatch(msg.channel.name, "⚠жалоба-от-*-на-*"):
 			log_reports = disnake.utils.get(msg.guild.channels, id=1242373230384386068)
 			files=[]
@@ -527,12 +536,38 @@ class MainBot(AnyBots):
 											  f"Автор: `{msg.author.name} ({msg.author.id})`\n" +
 											  (f"Сообщение: ```{msg.content}```\n" if msg.content else ""),
 											  files = files)
+			return 0
+
+		def extract_root_domain(url):
+			ext = tldextract.extract(url)
+			if not ext.domain or not ext.suffix:
+				return None
+			return f"{ext.domain}.{ext.suffix}".lower()
+
+		log = disnake.utils.get(msg.guild.channels, id=893065482263994378)
+
+		url_pattern = re.compile(r'https?://[^\s]+')
+		links = re.findall(url_pattern, msg.content)
+		аllowed_domains_model = self.DataBaseManager.model_classes['аllowed_domains']
+		async with self.DataBaseManager.session() as session:
+			for link in links:
+				root_domain = extract_root_domain(link)
+				stmt = self.DataBaseManager.select(аllowed_domains_model).where(аllowed_domains_model.domain == root_domain)
+				link_in_wl = (await session.execute(stmt)).scalars().first()
+
+				if link_in_wl is None:
+					print("Нарушение!!!")
+					await log.send(f"{msg.author.mention}({msg.author.id}) отправил в чат {msg.channel.mention} сомнительную ссылку, которой нет в вайлисте:```{msg.content}```")
+					mess = await msg.reply(embed=disnake.Embed(description=f'Этой ссылки нет в белом списке. Чтобы её туда добавили, свяжитесь с разработчиком или модераторами.', colour=0xff9900))
+					await msg.delete()
+					await asyncio.sleep(20)
+					await mess.delete()
+					return 1
 
 		message_words = msg.content.replace("/", " ").split(" ")
 		if "discord.gg" in message_words:
 			for i in range(len(message_words)):
 				if message_words[i]=="discord.gg" and not msg.author.bot:
-					log = disnake.utils.get(msg.guild.channels, id=893065482263994378)
 					try:
 						inv = await self.fetch_invite(url = "https://discord.gg/"+message_words[i+1])
 						if inv.guild.id != 490445877903622144:
@@ -561,51 +596,6 @@ async def init_db():
 		await conn.run_sync(DataBaseClasses['base'].metadata.create_all)
 	
 	return DatabaseManager(DataBaseEngine, DataBaseClasses)
-
-async def db_migration(DB_MANAGER):
-	new_DataBase = DB_MANAGER
-	DataBase = await old_DatabaseManager.connect("data/penalties.db")
-	await DataBase.execute("PRAGMA journal_mode=WAL")
-	await DataBase.execute("PRAGMA synchronous=NORMAL")
-	await DataBase.execute("PRAGMA foreign_keys = ON")
-	try:
-		async with new_DataBase.engine.begin() as conn:
-			await conn.run_sync(new_DataBase.metadata.drop_all)
-			await conn.run_sync(new_DataBase.metadata.create_all)
-		async with new_DataBase.session() as session:
-			for penaltid, userid, reason, timend, timewarn in await DataBase.SelectBD('punishment_text_mutes'):
-				penault = DB_MANAGER.model_classes['punishment_mutes_text'](user_id = userid, reason = reason, time_end = timend if timend else None, time_warn = timewarn if timewarn else None)
-				async with session.begin():
-					session.add(penault)
-
-			for penaltid, userid, reason, timend, timewarn in await DataBase.SelectBD('punishment_voice_mutes'):
-				penault = DB_MANAGER.model_classes['punishment_mutes_voice'](user_id = userid, reason = reason, time_end = timend if timend else None, time_warn = timewarn if timewarn else None)
-				async with session.begin():
-					session.add(penault)
-
-			for penaltid, userid, reason, timend in await DataBase.SelectBD('punishment_bans'):
-				penault = DB_MANAGER.model_classes['punishment_bans'](user_id = userid, reason = reason, time_end = timend if timend else None)
-				async with session.begin():
-					session.add(penault)
-
-			for penaltid, userid, reason in await DataBase.SelectBD('punishment_perms'):
-				penault = DB_MANAGER.model_classes['punishment_perms'](user_id = userid, reason = reason)
-				async with session.begin():
-					session.add(penault)
-
-			for penaltid, userid, reason, timend in await DataBase.SelectBD('punishment_warns'):
-				penault = DB_MANAGER.model_classes['punishment_warns'](user_id = userid, reason = reason, time_warn = timend)
-				async with session.begin():
-					session.add(penault)
-
-			for penaltid, userid, reason, timend in await DataBase.SelectBD('punishment_reprimands'):
-				penault = DB_MANAGER.model_classes['punishment_reprimands'](user_id = userid, reason = reason, time_warn = timend)
-				async with session.begin():
-					session.add(penault)
-	finally:
-		await DataBase.close()
-
-	raise Exception("Миграция БД завершена. требуется переименовывание файлов")
 
 async def run_bot(bot, token, stop_event):
 	try:
