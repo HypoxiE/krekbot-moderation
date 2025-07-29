@@ -246,43 +246,6 @@ class AnyBots(commands.Bot):
 		await bt_channel.send(json.dumps(info))
 		return 0
 
-	class ErrorOutHelper:
-		def __init__(self, send_function, err_name: str = "", err_description: str = "", ephemeral: bool = False, echo: bool = False, thumbnail = None):
-			self.err_name = err_name
-			self.err_description = err_description
-			self.send_function = send_function
-			self.ephemeral = ephemeral
-			self.echo = echo
-			self.thumbnail = thumbnail
-			self.colour = 0xff0000
-
-		async def out(self, err_description: str = "", err_name: str = "", d: str = "", n: str = ""):
-			if d:
-				err_description = d
-			if n:
-				err_name = n
-
-			embed = disnake.Embed(title="", description="", colour = self.colour)
-			if err_name:
-				embed.title = err_name
-			else:
-				embed.title = self.err_name
-
-			if err_description:
-				embed.description = err_description
-			else:
-				embed.description = self.err_description
-
-			if not self.thumbnail is None:
-				embed.set_thumbnail(url = self.thumbnail)
-
-			if self.echo:
-				print(f"{embed.title}: {embed.description}")
-			if 'ephemeral' in inspect.signature(self.send_function).parameters:
-				await self.send_function(embed = embed, ephemeral = self.ephemeral)
-			else:
-				await self.send_function(embed = embed)
-
 	class ErrEmbed(disnake.Embed):
 		def __init__(self, **kwargs):
 			color = kwargs.pop('color', 0xff0000)
