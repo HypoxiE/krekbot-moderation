@@ -136,7 +136,7 @@ class ModerModule(commands.Cog):
 							await member.edit(nick=newnick)
 
 						await interaction.response.defer(ephemeral=True)
-						embed = disnake.Embed(title=f"{translate[self.title.split(':')[0]]}", description = f"{self.member.mention} ({self.member.id})")
+						embed = self.client.AnswEmbed(title=f"{translate[self.title.split(':')[0]]}", description = f"{self.member.mention} ({self.member.id})")
 						bans_channel = disnake.utils.get(interaction.guild.channels, id = 1219644103973671035)
 						warns_channel = disnake.utils.get(interaction.guild.channels, id = 1219644151184887838)
 						muts_channel = disnake.utils.get(interaction.guild.channels, id = 1219644125469474889)
@@ -225,7 +225,7 @@ class ModerModule(commands.Cog):
 										counter += count_translate[i] * len(result)
 							if counter>=18:
 								await ban(interaction, self.member, 0, "Набрал больше 18 'очков наказаний'")
-								await bans_channel.send(embed=disnake.Embed(title=f"Достойное достижение!", description = f"Поздравляем! {self.member.mention}({self.member.id}) наконец набрал целых {counter} очков наказания и получил свою награду: вечный бан!"))
+								await bans_channel.send(embed=self.client.AnswEmbed(title=f"Достойное достижение!", description = f"Поздравляем! {self.member.mention}({self.member.id}) наконец набрал целых {counter} очков наказания и получил свою награду: вечный бан!"))
 
 						await interaction.edit_original_response(embed=embed)
 
@@ -329,12 +329,12 @@ class ModerModule(commands.Cog):
 								await self.client.bt_send({"type": "unpunishment", "options": {"severity": "warning", "member": int(member)}})
 
 							view = disnake.ui.View(timeout=30)
-							embed =  disnake.Embed(title="Выберите наказание для снятия", description = f"{self.member.mention}\n({self.member.id})", colour = 0x008000)
+							embed =  self.client.AnswEmbed(title="Выберите наказание для снятия", description = f"{self.member.mention}\n({self.member.id})")
 							view.add_item(await DeletePenaltiesSelect(self.member).initialization(embed))
 							await interaction.response.edit_message(embed = embed, view=view)
 
-							await interaction.followup.send(embed = disnake.Embed(description = f"Наказание {pentype} успешно аннулировано!", colour = 0x008000), ephemeral=True)
-							await logs_channel.send(embed = disnake.Embed(description = f"{interaction.author.mention}({interaction.author.id}) успешно аннулировал наказание {pentype}({penaltid}) у пользователя {member}", colour = 0x008000),)
+							await interaction.followup.send(embed = self.client.AnswEmbed(description = f"Наказание {pentype} успешно аннулировано!"), ephemeral=True)
+							await logs_channel.send(embed = self.client.AnswEmbed(description = f"{interaction.author.mention}({interaction.author.id}) успешно аннулировал наказание {pentype}({penaltid}) у пользователя {member}"),)
 
 
 				if "textmute" in self.values[0] or "voicemute" in self.values[0] or "ban" in self.values[0] or\
@@ -343,7 +343,7 @@ class ModerModule(commands.Cog):
 					await interaction.response.send_modal(modal)
 				elif "deletepenalties" in self.values[0]:
 					view = disnake.ui.View(timeout=30)
-					embed =  disnake.Embed(title="Выберите наказание для снятия", description = f"{self.member.mention}\n({self.member.id})", colour = 0x008000)
+					embed =  self.client.AnswEmbed(title="Выберите наказание для снятия", description = f"{self.member.mention}\n({self.member.id})")
 					view.add_item(await DeletePenaltiesSelect(self.member).initialization(embed))
 					await interaction.response.send_message(embed = embed, ephemeral=True, view=view)
 		await ctx.response.defer(ephemeral=True)
@@ -353,7 +353,7 @@ class ModerModule(commands.Cog):
 			stmt = self.max_strength_role(ctx.author.id)
 			author_strenght = (await session.execute(stmt)).first()
 			if author_strenght is None:
-				await ctx.edit_original_message(embed = disnake.Embed(description = f"Вы должны иметь должность в персонале полей, чтобы действовать", colour = 0xff9900))
+				await ctx.edit_original_message(embed = self.client.ErrEmbed(description = f"Вы должны иметь должность в персонале полей, чтобы действовать"))
 				return
 
 			stmt = (
@@ -401,10 +401,10 @@ class ModerModule(commands.Cog):
 				await ctx.edit_original_message(view=None)
 
 		if (not reprimand_branches) and (not ((not member_is_moderator) and author_is_moderator)):
-			await ctx.edit_original_message(embed = disnake.Embed(description = f"Вы ничего не можете сделать этому пользователю", colour = 0xff9900))
+			await ctx.edit_original_message(embed = self.client.ErrEmbed(description = f"Вы ничего не можете сделать этому пользователю"))
 			return
 				
-		embed = disnake.Embed(title="Выберите действие", description = f"{member.mention}\n({member.id})", colour = 0x008000)
+		embed = self.client.AnswEmbed(title="Выберите действие", description = f"{member.mention}\n({member.id})")
 		embed.set_thumbnail(url=member.avatar)
 		view = View(timeout=30)
 		view.add_item(ActionSelect(member = member, reprimand_branches = reprimand_branches, other_on = (not member_is_moderator) and author_is_moderator))
@@ -459,14 +459,14 @@ class ModerModule(commands.Cog):
 			try:
 				await member.add_roles(add_role)
 			except disnake.errors.Forbidden:
-				await ctx.channel.send(ctx.author.mention, embed = disnake.Embed(description = f'Недостаточно прав. Пользователю {member.mention} необходимо ручное добавление роли {add_role.mention}', colour = 0xff9900))
+				await ctx.channel.send(ctx.author.mention, embed = self.client.ErrEmbed(description = f'Недостаточно прав. Пользователю {member.mention} необходимо ручное добавление роли {add_role.mention}'))
 
 		if not remove_roleid is None:
 			remove_role = await krekchat.fetch_role(remove_roleid)
 			try:
 				await member.remove_roles(remove_role)
 			except disnake.errors.Forbidden:
-				await ctx.channel.send(ctx.author.mention, embed = disnake.Embed(description = f'Недостаточно прав. Пользователю {member.mention} необходимо ручное удаление роли {remove_role.mention}', colour = 0xff9900))
+				await ctx.channel.send(ctx.author.mention, embed = self.client.ErrEmbed(description = f'Недостаточно прав. Пользователю {member.mention} необходимо ручное удаление роли {remove_role.mention}'))
 
 
 	@commands.slash_command(description="Позволяет повысить пользователя в указанной ветке", name="повысить", administrator=True)
@@ -497,7 +497,7 @@ class ModerModule(commands.Cog):
 					user_roles = (await session.execute(stmt)).scalars().all()
 
 					if len(user_roles) != 1:
-						await ctx.send(embed = disnake.Embed(description = f'Для данной операции необходимо уточнение id ветки!', colour = 0xff9900))
+						await ctx.send(embed = self.client.ErrEmbed(description = f'Для данной операции необходимо уточнение id ветки!'))
 						return 1
 
 					else:
@@ -510,7 +510,7 @@ class ModerModule(commands.Cog):
 				member_upper_role = (await session.execute(stmt)).first()
 
 				if author_upper_role is None or ((not member_upper_role is None) and author_upper_role >= member_upper_role):
-					await ctx.send(embed = disnake.Embed(description = f'Вы должны быть выше должности, на которую назначаете пользователя', colour = 0xff9900))
+					await ctx.send(embed = self.client.ErrEmbed(description = f'Вы должны быть выше должности, на которую назначаете пользователя'))
 					return 1
 
 				stmt = (
@@ -546,39 +546,39 @@ class ModerModule(commands.Cog):
 					member_role_index = next((i for i, role in enumerate(branch_roles) if role.id == member_role.role.id), None)
 
 					if member_role_index + 1 >= len(branch_roles):
-						await ctx.send(embed = disnake.Embed(description = f'Этот пользователь уже находится на самой высокой должности в данной ветви', colour = 0xff9900))
+						await ctx.send(embed = self.client.ErrEmbed(description = f'Этот пользователь уже находится на самой высокой должности в данной ветви'))
 						return 1
 
 					target_role = branch_roles[member_role_index + 1]
 					if author_upper_role >= (target_role.branch.layer, target_role.layer):
-						await ctx.send(embed = disnake.Embed(description = f'Вы должны быть выше должности, на которую назначаете пользователя', colour = 0xff9900))
+						await ctx.send(embed = self.client.ErrEmbed(description = f'Вы должны быть выше должности, на которую назначаете пользователя'))
 						return 1
 
 					previous_role_id = member_role.role_id
 					member_role.role_id = target_role.id
-					await ctx.send(embed = disnake.Embed(description = f'Пользователь <@{userid}> успешно назначен на роль <@&{target_role.id}>', colour = 0xff9900))
+					await ctx.send(embed = self.client.AnswEmbed(description = f'Пользователь <@{userid}> успешно назначен на роль <@&{target_role.id}>'))
 					await self.promotions_add_remove_role(ctx, userid, add_roleid = target_role.id, remove_roleid = previous_role_id)
 					return 0
 				else:
 					member_check = await session.get(staff_users_model, userid)
 					if member_check is None:
-						await ctx.send(embed = disnake.Embed(description = f'Необходимо изначально зарегистрировать пользователя, попросите разработчика использовать \"/правка_пользователя\"', colour = 0xff9900))
+						await ctx.send(embed = self.client.ErrEmbed(description = f'Необходимо изначально зарегистрировать пользователя, попросите разработчика использовать \"/правка_пользователя\"'))
 						return 1
 
 					member_role_index = 0
 
 					if member_role_index >= len(branch_roles):
-						await ctx.send(embed = disnake.Embed(description = f'В данной ветви пока нет ролей', colour = 0xff9900))
+						await ctx.send(embed = self.client.ErrEmbed(description = f'В данной ветви пока нет ролей'))
 						return 1
 
 					target_role = branch_roles[member_role_index]
 					if author_upper_role >= (target_role.branch.layer, target_role.layer):
-						await ctx.send(embed = disnake.Embed(description = f'Вы должны быть выше должности, на которую назначаете пользователя', colour = 0xff9900))
+						await ctx.send(embed = self.client.ErrEmbed(description = f'Вы должны быть выше должности, на которую назначаете пользователя'))
 						return 1
 
 					user_role = await staff_users_roles_model.create_with_auto_branch(session, user_id = userid, role_id = target_role.id)
 					session.add(user_role)
-					await ctx.send(embed = disnake.Embed(description = f'Пользователь <@{userid}> успешно назначен на роль <@&{target_role.id}>', colour = 0xff9900))
+					await ctx.send(embed = self.client.AnswEmbed(description = f'Пользователь <@{userid}> успешно назначен на роль <@&{target_role.id}>'))
 					await self.promotions_add_remove_role(ctx, userid, add_roleid = target_role.id)
 					return 0
 
@@ -610,7 +610,7 @@ class ModerModule(commands.Cog):
 					user_roles = (await session.execute(stmt)).scalars().all()
 
 					if len(user_roles) != 1:
-						await ctx.send(embed = disnake.Embed(description = f'Для данной операции необходимо уточнение id ветки!', colour = 0xff9900))
+						await ctx.send(embed = self.client.ErrEmbed(description = f'Для данной операции необходимо уточнение id ветки!'))
 						return 1
 
 					else:
@@ -623,7 +623,7 @@ class ModerModule(commands.Cog):
 				member_upper_role = (await session.execute(stmt)).first()
 
 				if author_upper_role is None or ((not member_upper_role is None) and author_upper_role >= member_upper_role):
-					await ctx.send(embed = disnake.Embed(description = f'Вы должны быть выше пользователя в должности', colour = 0xff9900))
+					await ctx.send(embed = self.client.ErrEmbed(description = f'Вы должны быть выше пользователя в должности'))
 					return 1
 
 				stmt = (
@@ -668,22 +668,22 @@ class ModerModule(commands.Cog):
 						if len(result) <= 1:
 							stmt = self.DataBaseManager.delete(staff_users_model).where(staff_users_model.id == userid)
 							await session.execute(stmt)
-							await ctx.send(embed = disnake.Embed(description = f'Пользователь <@{userid}> полностью удалён из системы', colour = 0xff9900))
+							await ctx.send(embed = self.client.AnswEmbed(description = f'Пользователь <@{userid}> полностью удалён из системы'))
 							await self.promotions_add_remove_role(ctx, userid, remove_roleid = self.client.staff.id)
 							return 0
 						else:
 							await session.delete(member_role)
-							await ctx.send(embed = disnake.Embed(description = f'Пользователь <@{userid}> снят со всех должностей в ветви {branchid}', colour = 0xff9900))
+							await ctx.send(embed = self.client.AnswEmbed(description = f'Пользователь <@{userid}> снят со всех должностей в ветви {branchid}'))
 							return 0
 
 					target_role = branch_roles[member_role_index - 1]
 					previous_role_id = member_role.role_id
 					member_role.role_id = target_role.id
-					await ctx.send(embed = disnake.Embed(description = f'Пользователь <@{userid}> успешно понижен до роли <@&{target_role.id}> в ветви {branchid}', colour = 0xff9900))
+					await ctx.send(embed = self.client.AnswEmbed(description = f'Пользователь <@{userid}> успешно понижен до роли <@&{target_role.id}> в ветви {branchid}'))
 					await self.promotions_add_remove_role(ctx, userid, add_roleid = target_role.id, remove_roleid = previous_role_id)
 					return 0
 				else:
-					await ctx.send(embed = disnake.Embed(description = f'Данный пользователь не имеет роли в ветке {branchid}', colour = 0xff9900))
+					await ctx.send(embed = self.client.ErrEmbed(description = f'Данный пользователь не имеет роли в ветке {branchid}'))
 					return 1
 
 	@commands.slash_command(description="Позволяет добавить домен в белый список", name="добавить_ссылку", administrator=True)
@@ -719,7 +719,7 @@ class ModerModule(commands.Cog):
 						break
 
 				if not admin_flag:
-					await ctx.send(embed = disnake.Embed(description = f'У вас недостаточно полномочий, чтобы добавлять ссылку в белый лист. Обратитесь к любому модератору или разработчику.', colour = 0xff9900))
+					await ctx.send(embed = self.client.ErrEmbed(description = f'У вас недостаточно полномочий, чтобы добавлять ссылку в белый лист. Обратитесь к любому модератору или разработчику.'))
 					return 1
 
 				else:
@@ -731,18 +731,18 @@ class ModerModule(commands.Cog):
 						return f"{ext.domain}.{ext.suffix}".lower()
 					new_link = extract_root_domain(link)
 					if not new_link:
-						await ctx.send(embed = disnake.Embed(description = f'Некорректная ссылка!', colour = 0xff9900))
+						await ctx.send(embed = self.client.ErrEmbed(description = f'Некорректная ссылка!'))
 						return 1
 
 					stmt = self.DataBaseManager.select(аllowed_domains_model).where(аllowed_domains_model.domain == new_link)
 					link_in_wl = (await session.execute(stmt)).scalars().first()
 
 					if link_in_wl is not None:
-						await ctx.send(embed = disnake.Embed(description = f'Этот домен уже есть в белом листе!', colour = 0xff9900))
+						await ctx.send(embed = self.client.ErrEmbed(description = f'Этот домен уже есть в белом листе!'))
 						return 1
 
 					domain = аllowed_domains_model(domain = new_link, initiator_id = ctx.author.id)
 					session.add(domain)
 
-					await ctx.send(embed = disnake.Embed(description = f'Домен {new_link} успешно добавлен в белый список', colour = 0xff9900))
+					await ctx.send(embed = self.client.AnswEmbed(description = f'Домен {new_link} успешно добавлен в белый список'))
 					return 1

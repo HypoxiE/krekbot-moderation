@@ -283,6 +283,25 @@ class AnyBots(commands.Bot):
 			else:
 				await self.send_function(embed = embed)
 
+	class ErrEmbed(disnake.Embed):
+		def __init__(self, **kwargs):
+			color = kwargs.pop('color', 0xff0000)
+			super().__init__(color = color, **kwargs)
+
+	class AnswEmbed(disnake.Embed):
+		def __init__(self, **kwargs):
+			color = kwargs.pop('color', 0x008000)
+			super().__init__(color = color, **kwargs)
+
+	class WarnEmbed(disnake.Embed):
+		def __init__(self, **kwargs):
+			color = kwargs.pop('color', 0xFFFF00)
+			super().__init__(color = color, **kwargs)
+
+	class SuccessEmbed(disnake.Embed):
+		def __init__(self, **kwargs):
+			color = kwargs.pop('color', 0x008000)
+			super().__init__(color = color, **kwargs)
 
 class MainBot(AnyBots):
 	'''
@@ -520,14 +539,14 @@ class MainBot(AnyBots):
 
 	async def on_message(self, msg):
 		
-		if msg.author.bot:
+		if msg.author.bot or not self.task_start:
 			return 0
 
 		if msg.author.id == 479210801891115009 and msg.content == "botsoff":
-			await msg.reply(embed=disnake.Embed(description=f'Бот отключён', colour=0xff9900))
+			await msg.reply(embed=self.AnswEmbed(description=f'Бот отключён', colour=0xff9900))
 			await self.BotOff()
 			return 0
-		if type(msg.channel).__name__!="DMChannel" and fnmatch(msg.channel.name, "⚠жалоба-от-*-на-*"):
+		if type(msg.channel).__name__!="DMChannel" and re.match(r"^⚠️?жалоба-от-(.+)-на-(.+)$", msg.channel.name):
 			log_reports = disnake.utils.get(msg.guild.channels, id=1242373230384386068)
 			files=[]
 			for att in msg.attachments:
@@ -558,7 +577,7 @@ class MainBot(AnyBots):
 				if link_in_wl is None:
 					print("Нарушение!!!")
 					await log.send(f"{msg.author.mention}({msg.author.id}) отправил в чат {msg.channel.mention} сомнительную ссылку, которой нет в вайлисте:```{msg.content}```")
-					mess = await msg.reply(embed=disnake.Embed(description=f'Этой ссылки нет в белом списке. Чтобы её туда добавили, свяжитесь с разработчиком или модераторами.', colour=0xff9900))
+					mess = await msg.reply(embed=self.ErrEmbed(description=f'Этой ссылки нет в белом списке. Чтобы её туда добавили, свяжитесь с разработчиком или модераторами.', colour=0xff9900))
 					await msg.delete()
 					await asyncio.sleep(20)
 					await mess.delete()
@@ -572,7 +591,7 @@ class MainBot(AnyBots):
 						inv = await self.fetch_invite(url = "https://discord.gg/"+message_words[i+1])
 						if inv.guild.id != 490445877903622144:
 							await log.send(f"{msg.author.mention}({msg.author.id}) отправил в чат {msg.channel.mention} сомнительную ссылку на сервер '{inv.guild.name}':```{msg.content}```")
-							mess = await msg.reply(embed=disnake.Embed(description=f'Ссылки-приглашения запрещены!', colour=0xff9900))
+							mess = await msg.reply(embed=self.ErrEmbed(description=f'Ссылки-приглашения запрещены!', colour=0xff9900))
 							await msg.delete()
 							await asyncio.sleep(20)
 							await mess.delete()
