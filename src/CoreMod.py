@@ -520,6 +520,10 @@ class MainBot(AnyBots):
 											  files = files)
 			return 0
 
+		async with self.DataBaseManager.session() as session:
+			if (await self.DataBaseManager.model_classes['staff_users'].is_admin_or_moder_by_id(msg.author.id, self.DataBaseManager, session)):
+				return 0
+
 		def extract_root_domain(url):
 			ext = tldextract.extract(url)
 			if not ext.domain or not ext.suffix:
@@ -538,7 +542,6 @@ class MainBot(AnyBots):
 				link_in_wl = (await session.execute(stmt)).scalars().first()
 
 				if link_in_wl is None:
-					print("Нарушение!!!")
 					await log.send(f"{msg.author.mention}({msg.author.id}) отправил в чат {msg.channel.mention} сомнительную ссылку, которой нет в вайлисте:```{msg.content}```")
 					mess = await msg.reply(embed=self.ErrEmbed(description=f'Этой ссылки нет в белом списке. Чтобы её туда добавили, свяжитесь с разработчиком или модераторами.', colour=0xff9900))
 					await msg.delete()

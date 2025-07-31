@@ -689,60 +689,34 @@ class ModerModule(commands.Cog):
 	@commands.slash_command(description="Позволяет добавить домен в белый список", name="добавить_ссылку", administrator=True)
 	async def add_domain(self, ctx: disnake.AppCmdInter, link: str = commands.Param(description="Укажите ссылку или домен", name="ссылка")):
 		async with self.DataBaseManager.session() as session:
-			async with session.begin():
-				staff_branches_model = self.DataBaseManager.model_classes['staff_branches']
-				аllowed_domains_model = self.DataBaseManager.model_classes['аllowed_domains']
+			if not (await self.DataBaseManager.model_classes['staff_users'].is_admin_or_moder_by_id(ctx.author.id, self.DataBaseManager, session)):
+				await ctx.send(embed = self.client.ErrEmbed(description = f'У вас недостаточно полномочий, чтобы добавлять ссылку в белый лист. Обратитесь к любому модератору или разработчику.'))
+				return 1
 
-				admin_flag = False
+			else:
 
-				stmt = (
-					self.DataBaseManager.select(staff_branches_model)
-					.options(
-						self.DataBaseManager.selectinload(staff_branches_model.users)
-					)
-					.where(
-						self.DataBaseManager.or_(
-							staff_branches_model.is_admin == True,
-							staff_branches_model.is_moder == True
-						)
-					)
-				)
-
-				branches = (await session.execute(stmt)).scalars().all()
-
-				for branch in branches:
-					for user in branch.users:
-						if ctx.author.id == user.user_id:
-							admin_flag = True
-							break
-					if admin_flag:
-						break
-
-				if not admin_flag:
-					await ctx.send(embed = self.client.ErrEmbed(description = f'У вас недостаточно полномочий, чтобы добавлять ссылку в белый лист. Обратитесь к любому модератору или разработчику.'))
+				def extract_root_domain(url):
+					ext = tldextract.extract(url)
+					if not ext.domain or not ext.suffix:
+						return None
+					return f"{ext.domain}.{ext.suffix}".lower()
+				new_link = extract_root_domain(link)
+				if not new_link:
+					await ctx.send(embed = self.client.ErrEmbed(description = f'Некорректная ссылка!'))
 					return 1
 
-				else:
+				аllowed_domains_model = self.DataBaseManager.model_classes['аllowed_domains']
 
-					def extract_root_domain(url):
-						ext = tldextract.extract(url)
-						if not ext.domain or not ext.suffix:
-							return None
-						return f"{ext.domain}.{ext.suffix}".lower()
-					new_link = extract_root_domain(link)
-					if not new_link:
-						await ctx.send(embed = self.client.ErrEmbed(description = f'Некорректная ссылка!'))
-						return 1
+				stmt = self.DataBaseManager.select(аllowed_domains_model).where(аllowed_domains_model.domain == new_link)
+				link_in_wl = (await session.execute(stmt)).scalars().first()
 
-					stmt = self.DataBaseManager.select(аllowed_domains_model).where(аllowed_domains_model.domain == new_link)
-					link_in_wl = (await session.execute(stmt)).scalars().first()
+				if link_in_wl is not None:
+					await ctx.send(embed = self.client.ErrEmbed(description = f'Этот домен уже есть в белом листе!'))
+					return 1
 
-					if link_in_wl is not None:
-						await ctx.send(embed = self.client.ErrEmbed(description = f'Этот домен уже есть в белом листе!'))
-						return 1
-
+				async with session.begin():
 					domain = аllowed_domains_model(domain = new_link, initiator_id = ctx.author.id)
 					session.add(domain)
 
 					await ctx.send(embed = self.client.AnswEmbed(description = f'Домен {new_link} успешно добавлен в белый список'))
-					return 1
+					return 0

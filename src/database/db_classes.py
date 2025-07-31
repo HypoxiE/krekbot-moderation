@@ -148,6 +148,31 @@ class StaffUser(Base):
 		primaryjoin="StaffUser.id==StaffCuration.curator_id"
 	)
 
+	async def is_admin_or_moder(self, DBManager, session):
+		return await self.__class__.is_admin_or_moder_by_id(self.id, DBManager, session)
+
+	@staticmethod
+	async def is_admin_or_moder_by_id(member_id, DBManager, session):
+		staff_branches_model = DBManager.model_classes['staff_branches']
+		staff_users_roles_model = DBManager.model_classes['staff_users_roles']
+
+		stmt = (
+			DBManager.select(staff_users_roles_model)
+			.join(staff_branches_model, staff_branches_model.id == staff_users_roles_model.branch_id)
+			.where(
+				DBManager.and_(
+					DBManager.or_(
+						staff_branches_model.is_admin == True,
+						staff_branches_model.is_moder == True,
+					),
+					staff_users_roles_model.user_id == member_id
+				)
+			)
+		)
+
+		result = await session.execute(stmt)
+		return result.scalars().first() is not None
+
 
 class StaffUserRole(Base):
 	__tablename__ = 'staff_users_roles'
