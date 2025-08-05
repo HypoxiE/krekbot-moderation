@@ -543,7 +543,7 @@ class MainBot(AnyBots):
 
 				if link_in_wl is None:
 					await log.send(f"{msg.author.mention}({msg.author.id}) отправил в чат {msg.channel.mention} сомнительную ссылку, которой нет в вайлисте:```{msg.content}```")
-					mess = await msg.reply(embed=self.ErrEmbed(description=f'Этой ссылки нет в белом списке. Чтобы её туда добавили, свяжитесь с разработчиком или модераторами.', colour=0xff9900))
+					mess = await msg.reply(embed=self.ErrEmbed(description=f'Этой ссылки нет в белом списке, но заявка на добавление уже отправлена. Если это срочно, свяжитесь с разработчиком или модераторами.', colour=0xff9900))
 					await msg.delete()
 					await asyncio.sleep(20)
 					await mess.delete()
