@@ -213,7 +213,7 @@ class AdminModule(commands.Cog):
 	@commands.slash_command(name="запланировать_сообщение", description="Позволяет запланировать отправку анонсов и других сообщений")
 	async def schedule_message(self, ctx: disnake.AppCmdInter,
 							message_id: str = commands.Param(description="Укажите id сообщения, которое будет отложено", name="сообщение"),
-							webhook_link: str = commands.Param(description="Укажите ссылку на вебхук, от которого будет отправлено сообщение(по умолчанию от лица бота)", name="вебхук", default=None),
+							webhook_link: str = commands.Param(description="Укажите ссылку на вебхук, от которого будет отправлено сообщение", name="вебхук"),
 							timestamp: int = commands.Param(description="Временная метка для отправки сообщения", name="таймстамп", default=None)):
 		
 		await ctx.response.defer()
@@ -243,5 +243,7 @@ class AdminModule(commands.Cog):
 					message = scheduled_message_model(source_channel_id=ctx.channel.id, source_message_id=int(message_id), webhook_id=webhook_id, timestamp=timestamp)
 					session.add(message)
 
-					await ctx.edit_original_response(embed = self.client.SuccessEmbed(description = f'Успешно! Текст сообщения:\n {await message.parse_message(self.client)}', colour = 0xff9900))
+					await ctx.edit_original_response(embed = self.client.SuccessEmbed(description = f'Сообщение будет отправлено <t:{timestamp}:F>! Текст сообщения:', colour = 0xff9900))
+					mgs_parsed = await message.parse_message(self.client, preview=True)
+					await ctx.send(**mgs_parsed)
 					return 0

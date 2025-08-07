@@ -285,9 +285,11 @@ class MainBot(AnyBots):
 		if self.task_start:
 			self.CheckDataBases.cancel()
 			self.MakeBackups.cancel()
+			self.SendingDeferredMessages.cancel()
 
 			self.MakeBackups.start()
 			self.CheckDataBases.start()
+			self.SendingDeferredMessages.start()
 		else:
 			self.SendingDeferredMessages.start()
 
@@ -295,6 +297,7 @@ class MainBot(AnyBots):
 		if self.task_start:
 			self.CheckDataBases.cancel()
 			self.MakeBackups.cancel()
+			self.SendingDeferredMessages.cancel()
 
 		self.stop_event.set()
 
@@ -317,7 +320,7 @@ class MainBot(AnyBots):
 
 					for message in messages:
 						webhook = await self.fetch_webhook(message.webhook_id)
-						await webhook.send(await message.parse_message(self))
+						await webhook.send(**(await message.parse_message(self)))
 
 						await session.delete(message)
 

@@ -1,3 +1,5 @@
+import io
+import disnake
 from sqlalchemy import Column, Integer, BigInteger, Text, Float, ForeignKey, UniqueConstraint, MetaData, Boolean
 from sqlalchemy.orm import declarative_base, relationship, Mapped, mapped_column
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
@@ -238,13 +240,28 @@ class ScheduledMessage(Base):
 	webhook_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
 	timestamp: Mapped[float | None] = mapped_column(Float, nullable=True, index=True)
 
-	async def parse_message(self, client):
+	async def parse_message(self, client, *, preview=False):
 		krekchat = await client.fetch_guild(client.krekchat.id)
 		source_channel = await krekchat.fetch_channel(self.source_channel_id)
 		source_message = await source_channel.fetch_message(self.source_message_id)
 		
-		content = source_message.content
-		return content
+		files = []
+		for attachment in source_message.attachments:
+			file_bytes = await attachment.read()
+			files.append(disnake.File(io.BytesIO(file_bytes), filename=attachment.filename))
+		
+		content = source_message.content if not preview else source_message.clean_content
+			
+		def make_dict(**kwargs):
+			return kwargs
+		
+		args = make_dict(content=content,
+			embeds=source_message.embeds,
+			components=source_message.components,
+			files=files if files else None
+		)
+
+		return args
 
 all_data = {
 	'base': Base
