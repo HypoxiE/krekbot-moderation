@@ -152,7 +152,7 @@ class StaffUser(Base):
 		return await self.__class__.is_admin_or_moder_by_id(self.id, DBManager, session)
 
 	@staticmethod
-	async def is_admin_or_moder_by_id(member_id, DBManager, session):
+	async def is_admin_or_moder_by_id(member_id, DBManager, session, *, is_admin=True, is_moder=True):
 		staff_branches_model = DBManager.model_classes['staff_branches']
 		staff_users_roles_model = DBManager.model_classes['staff_users_roles']
 
@@ -162,8 +162,8 @@ class StaffUser(Base):
 			.where(
 				DBManager.and_(
 					DBManager.or_(
-						staff_branches_model.is_admin == True,
-						staff_branches_model.is_moder == True,
+						(staff_branches_model.is_admin == True) if is_admin else False,
+						(staff_branches_model.is_moder == True) if is_moder else False,
 					),
 					staff_users_roles_model.user_id == member_id
 				)
@@ -233,10 +233,18 @@ class AllowedDomain(Base):
 
 class ScheduledMessage(Base):
 	__tablename__ = "scheduled_messages"
-	message_id: Mapped[discord_identificator_pk]
-	webhook_id: Mapped[discord_identificator]
-	timestamp: Mapped[float | None] = mapped_column(Float)
+	source_message_id: Mapped[discord_identificator_pk]
+	source_channel_id: Mapped[discord_identificator]
+	webhook_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
+	timestamp: Mapped[float | None] = mapped_column(Float, nullable=True, index=True)
 
+	async def parse_message(self, client):
+		krekchat = await client.fetch_guild(client.krekchat.id)
+		source_channel = await krekchat.fetch_channel(self.source_channel_id)
+		source_message = await source_channel.fetch_message(self.source_message_id)
+		
+		content = source_message.content
+		return content
 
 all_data = {
 	'base': Base

@@ -1,3 +1,4 @@
+import re
 import disnake
 from disnake.ext import commands
 from disnake.ext import tasks
@@ -208,3 +209,39 @@ class AdminModule(commands.Cog):
 				session.add(user_role)
 				await ctx.send(embed = self.client.SuccessEmbed(description = f'Пользователю <@{userid}> успешно назначена роль <@&{roleid}>. \n```diff\n- Эта функция не выдаёт роли автоматически, поэтому требуется выдача вручную.```', colour = 0xff9900))
 				return 0
+			
+	@commands.slash_command(name="запланировать_сообщение", description="Позволяет запланировать отправку анонсов и других сообщений")
+	async def schedule_message(self, ctx: disnake.AppCmdInter,
+							message_id: str = commands.Param(description="Укажите id сообщения, которое будет отложено", name="сообщение"),
+							webhook_link: str = commands.Param(description="Укажите ссылку на вебхук, от которого будет отправлено сообщение(по умолчанию от лица бота)", name="вебхук", default=None),
+							timestamp: int = commands.Param(description="Временная метка для отправки сообщения", name="таймстамп", default=None)):
+		
+		await ctx.response.defer()
+		
+		def extract_webhook_id(webhook_url: str) -> int | None:
+			pattern = r"^https:\/\/(?:canary\.|ptb\.)?discord(?:app)?\.com\/api\/webhooks\/(\d+)\/[\w\-]+$"
+			match = re.match(pattern, webhook_url)
+			if match:
+				return int(match.group(1))
+			return None
+		
+		if webhook_link is None:
+			webhook_id = None
+		else:
+			webhook_id = extract_webhook_id(webhook_link)
+			if webhook_id is None:
+				await ctx.edit_original_response(embed = self.client.ErrEmbed(description = f'Некорректная ссылка'))
+				return 1
+		
+		async with self.DataBaseManager.session() as session:
+			async with session.begin():
+				if not (await self.DataBaseManager.model_classes['staff_users'].is_admin_or_moder_by_id(ctx.author.id, self.DataBaseManager, session, is_admin=True, is_moder=False)):
+					await ctx.edit_original_response(embed = self.client.ErrEmbed(description = f'У вас недостаточно полномочий, чтобы оставлять отложенные сообщения.'))
+					return 1
+				else:
+					scheduled_message_model = self.DataBaseManager.model_classes['scheduled_messages']
+					message = scheduled_message_model(source_channel_id=ctx.channel.id, source_message_id=int(message_id), webhook_id=webhook_id, timestamp=timestamp)
+					session.add(message)
+
+					await ctx.edit_original_response(embed = self.client.SuccessEmbed(description = f'Успешно! Текст сообщения:\n {await message.parse_message(self.client)}', colour = 0xff9900))
+					return 0

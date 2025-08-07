@@ -288,6 +288,8 @@ class MainBot(AnyBots):
 
 			self.MakeBackups.start()
 			self.CheckDataBases.start()
+		else:
+			self.SendingDeferredMessages.start()
 
 	async def BotOff(self):
 		if self.task_start:
@@ -302,6 +304,25 @@ class MainBot(AnyBots):
 		else:
 			print(f"{datetime.datetime.now().strftime('%H:%M:%S %d-%m-%Y')}:: Соединение с дискордом разорвано")
 			await self.BotOff()
+
+	@tasks.loop(seconds=60)
+	async def SendingDeferredMessages(self):
+		try:
+			async with self.DataBaseManager.session() as session:
+				async with session.begin():
+					stmt = self.DataBaseManager.select(self.DataBaseManager.model_classes['scheduled_messages']).where(
+						self.DataBaseManager.model_classes['scheduled_messages'].timestamp - datetime.datetime.now().timestamp() <= 0
+					).with_for_update()
+					messages = (await session.execute(stmt)).scalars().all()
+
+					for message in messages:
+						webhook = await self.fetch_webhook(message.webhook_id)
+						await webhook.send(await message.parse_message(self))
+
+						await session.delete(message)
+
+		except Exception as error:
+			print(f"{datetime.datetime.now().strftime('%H:%M:%S %d-%m-%Y')}:: err SendingDeferredMessages: {error}")
 
 	@tasks.loop(seconds=60)
 	async def CheckDataBases(self):
