@@ -231,6 +231,13 @@ class AllowedDomain(Base):
 	domain: Mapped[str] = mapped_column(Text, index=True, nullable=False, unique=True)
 	initiator_id: Mapped[discord_identificator]
 
+class ScheduledMessage(Base):
+	__tablename__ = "scheduled_messages"
+	message_id: Mapped[discord_identificator_pk]
+	webhook_id: Mapped[discord_identificator]
+	timestamp: Mapped[float | None] = mapped_column(Float)
+
+
 all_data = {
 	'base': Base
 }
