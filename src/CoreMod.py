@@ -277,64 +277,81 @@ class MainBot(AnyBots):
 	def __init__(self, DataBase, stop_event, task_start = True):
 		super().__init__(DataBase)
 		self.stop_event = stop_event
+		self.ready_once = asyncio.Event()
 		self.task_start = task_start
 
 	async def on_ready(self):
 		await super().on_ready()
 
-		if self.task_start:
-			self.CheckDataBases.cancel()
-			self.MakeBackups.cancel()
-			self.SendingDeferredMessages.cancel()
+		if not self.ready_once.is_set():
+			self.loops = [self.CheckDataBases, self.MakeBackups, self.SendingDeferredMessages, self.watchdog]
+			
+			if self.task_start:
+				for loop in self.loops:
+					loop.start()
 
-			self.MakeBackups.start()
-			self.CheckDataBases.start()
-			self.SendingDeferredMessages.start()
-		else:
-			self.SendingDeferredMessages.start()
+			else:
+				pass
+
+			self.ready_once.set()
 
 	async def BotOff(self):
-		if self.task_start:
-			self.CheckDataBases.cancel()
-			self.MakeBackups.cancel()
-			self.SendingDeferredMessages.cancel()
+		if self.task_start and self.ready_once.is_set():
+			for loop in self.loops:
+				loop.cancel()
 
 		self.stop_event.set()
 
-	async def on_disconnect(self):
-		if self.stop_event.is_set():
-			pass
-		else:
-			print(f"{datetime.datetime.now().strftime('%H:%M:%S %d-%m-%Y')}:: Соединение с дискордом разорвано")
-			await self.BotOff()
+	# async def on_disconnect(self):
+	# 	if self.stop_event.is_set():
+	# 		pass
+	# 	else:
+	# 		print(f"{datetime.datetime.now().strftime('%H:%M:%S %d-%m-%Y')}:: Соединение с дискордом разорвано")
+	# 		await self.BotOff()
 
+	@staticmethod
+	def catch_exceptions(func):
+		import functools, traceback
+		@functools.wraps(func)
+		async def wrapper(*args, **kwargs):
+			try:
+				return await func(*args, **kwargs)
+			except Exception:
+				print(f"{datetime.datetime.now().strftime('%H:%M:%S %d-%m-%Y')}:: [ERROR] {func.__name__}:\n{traceback.format_exc()}")
+		return wrapper
+
+	@tasks.loop(seconds=30)
+	@catch_exceptions.__func__
+	async def watchdog(self):
+
+		for loop in self.loops:
+			if loop.__name__ == self.watchdog.__name__:
+				continue
+
+			if not loop.is_running():
+				print(f"{datetime.datetime.now().strftime('%H:%M:%S %d-%m-%Y')}:: Обнаружено падение {loop.__name__}, перезапуск цикла...")
+				loop.cancel()
+		
+
+	
 	@tasks.loop(seconds=60)
+	@catch_exceptions.__func__
 	async def SendingDeferredMessages(self):
-		try:
-			async with self.DataBaseManager.session() as session:
-				async with session.begin():
-					stmt = self.DataBaseManager.select(self.DataBaseManager.model_classes['scheduled_messages']).where(
-						self.DataBaseManager.model_classes['scheduled_messages'].timestamp - datetime.datetime.now().timestamp() <= 0
-					).with_for_update()
-					messages = (await session.execute(stmt)).scalars().all()
+		async with self.DataBaseManager.session() as session:
+			async with session.begin():
+				stmt = self.DataBaseManager.select(self.DataBaseManager.model_classes['scheduled_messages']).where(
+					self.DataBaseManager.model_classes['scheduled_messages'].timestamp - datetime.datetime.now().timestamp() <= 0
+				).with_for_update()
+				messages = (await session.execute(stmt)).scalars().all()
 
-					for message in messages:
-						webhook = await self.fetch_webhook(message.webhook_id)
-						await webhook.send(**(await message.parse_message(self)))
+				for message in messages:
+					webhook = await self.fetch_webhook(message.webhook_id)
+					await webhook.send(**(await message.parse_message(self)))
 
-						await session.delete(message)
-
-		except Exception as error:
-			print(f"{datetime.datetime.now().strftime('%H:%M:%S %d-%m-%Y')}:: err SendingDeferredMessages: {error}")
-
-	@tasks.loop(seconds=60)
-	async def CheckDataBases(self):
-		try:
-			await self.CheckDataBasesRun()
-		except Exception as error:
-			print(f"{datetime.datetime.now().strftime('%H:%M:%S %d-%m-%Y')}:: err CheckDataBasesRun: {error}")
+					await session.delete(message)
 
 	@tasks.loop(seconds=3600)
+	@catch_exceptions.__func__
 	async def MakeBackups(self):
 		backup_file = await self.DataBaseManager.pg_dump()
 
@@ -342,7 +359,9 @@ class MainBot(AnyBots):
 		backups_channel = await krekchat.fetch_channel(self.databases_backups_channel_id)
 		await backups_channel.send(content=f"Бэкап бд за {datetime.datetime.now()}:", file=disnake.File(backup_file))
 
-	async def CheckDataBasesRun(self):
+	@tasks.loop(seconds=60)
+	@catch_exceptions.__func__
+	async def CheckDataBases(self):
 		self.krekchat = await self.fetch_guild(self.krekchat.id)
 		members = [i async for i in self.krekchat.fetch_members(limit=None)]
 		textmute = {'mute': [], 'unmute': list(filter(lambda m: self.text_mute in m.roles, members))}
@@ -524,9 +543,13 @@ class MainBot(AnyBots):
 				await session.execute(stmt)
 			#/преды
 
+	async def on_button_click(self, inter):
+		if not inter.response.is_done():
+			await inter.response.send_message(embed=self.ErrEmbed(description=f'Ответ не был отправлен, возможно, кнопка перестала действовать'), ephemeral=True)
+
 	async def on_message(self, msg):
 		
-		if msg.author.bot or not self.task_start:
+		if msg.author.bot or not self.task_start or not self.ready_once.is_set():
 			return 0
 
 		if msg.author.id == 479210801891115009 and msg.content == "botsoff":
@@ -567,7 +590,7 @@ class MainBot(AnyBots):
 
 				if link_in_wl is None:
 					await log.send(f"{msg.author.mention}({msg.author.id}) отправил в чат {msg.channel.mention} сомнительную ссылку, которой нет в вайлисте:```{msg.content}```")
-					mess = await msg.reply(embed=self.ErrEmbed(description=f'Этой ссылки нет в белом списке, но заявка на добавление уже отправлена. Если это срочно, свяжитесь с разработчиком или модераторами.', colour=0xff9900))
+					mess = await msg.reply(embed=self.ErrEmbed(description=f'Этой ссылки нет в белом списке, но заявка на добавление уже отправлена. Если это срочно, свяжитесь с разработчиком или модераторами.'))
 					await msg.delete()
 					await asyncio.sleep(20)
 					await mess.delete()
