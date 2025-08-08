@@ -325,11 +325,11 @@ class MainBot(AnyBots):
 	async def watchdog(self):
 
 		for loop in self.loops:
-			if loop.__name__ == self.watchdog.__name__:
+			if loop == self.watchdog:
 				continue
 
 			if not loop.is_running():
-				print(f"{datetime.datetime.now().strftime('%H:%M:%S %d-%m-%Y')}:: Обнаружено падение {loop.__name__}, перезапуск цикла...")
+				print(f"{datetime.datetime.now().strftime('%H:%M:%S %d-%m-%Y')}:: Обнаружено падение {loop.coro.__name__}, перезапуск цикла...")
 				loop.cancel()
 		
 
@@ -544,8 +544,8 @@ class MainBot(AnyBots):
 			#/преды
 
 	async def on_button_click(self, inter):
-		if not inter.response.is_done():
-			await inter.response.send_message(embed=self.ErrEmbed(description=f'Ответ не был отправлен, возможно, кнопка перестала действовать'), ephemeral=True)
+		if not inter.response.is_done():...
+			#await inter.response.send_message(embed=self.ErrEmbed(description=f'Ответ не был отправлен, возможно, кнопка перестала действовать'), ephemeral=True)
 
 	async def on_message(self, msg):
 		

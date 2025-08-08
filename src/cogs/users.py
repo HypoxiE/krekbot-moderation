@@ -75,6 +75,7 @@ class UIModule(commands.Cog):
 	@commands.slash_command(description="Подайте жалобу на нарушение правил сервера или действия модератора", name="жалоба")
 	async def report(self, ctx: disnake.AppCmdInter, member: disnake.Member = commands.Param(description="На кого хотите подать жалобу?", name="пользователь"), reason: str = commands.Param(description="Кратко опишите причину жалобы", name="причина")):
 		
+		client = self.client
 		async def ReportCallback(ctx, member, report_message, reason, embed, mentions, mod):
 
 			async def AcceptCallback(report_message, member, embed, mod, call, channel):
@@ -83,11 +84,11 @@ class UIModule(commands.Cog):
 					embed.set_footer(text = f"Рассмотрено в пользу исца\n{mod.author.name} ({mod.author.id})")
 					embed.colour=0x008000
 					await report_message.edit(content = "", embed=embed, view=None)
-					await member.send(embed = self.client.WarnEmbed(title=f"", description = f"После разбора нарушения модератор {mod.author.mention} признал вас виновным"))
+					await member.send(embed = client.WarnEmbed(title=f"", description = f"После разбора нарушения модератор {mod.author.mention} признал вас виновным"))
 
-					await self.client.bt_send({"type": "complaint", "options": {"accepted": True, "attack_member": ctx.author.id, "defence_member": member.id, "moderator": mod.author.id}})
+					await client.bt_send({"type": "complaint", "options": {"accepted": True, "attack_member": ctx.author.id, "defence_member": member.id, "moderator": mod.author.id}})
 				else:
-					await call.send(embed = self.client.ErrEmbed(title=f"", description = f"Только судья может использовать эти команды"), ephemeral=True)
+					await call.send(embed = client.ErrEmbed(title=f"", description = f"Только судья может использовать эти команды"), ephemeral=True)
 
 			async def DenyCallback(report_message, member, embed, mod, call, channel):
 				if call.author == mod.author:
@@ -95,11 +96,11 @@ class UIModule(commands.Cog):
 					embed.set_footer(text = f"Рассмотрено в пользу ответчика\n{mod.author.name} ({mod.author.id})")
 					embed.colour=0x008000
 					await report_message.edit(content = "", embed=embed, view=None)
-					#await member.send(embed = self.client.AnswEmbed(title=f"", description = f"После разбора нарушения модератор {mod.author.mention} признал вас невиновным", colour = 0xff9900))
+					#await member.send(embed = client.AnswEmbed(title=f"", description = f"После разбора нарушения модератор {mod.author.mention} признал вас невиновным", colour = 0xff9900))
 
-					await self.client.bt_send({"type": "complaint", "options": {"accepted": False, "attack_member": ctx.author.id, "defence_member": member.id, "moderator": mod.author.id}})
+					await client.bt_send({"type": "complaint", "options": {"accepted": False, "attack_member": ctx.author.id, "defence_member": member.id, "moderator": mod.author.id}})
 				else:
-					await call.send(embed = self.client.ErrEmbed(title=f"", description = f"Только судья может использовать эти команды"), ephemeral=True)
+					await call.send(embed = client.ErrEmbed(title=f"", description = f"Только судья может использовать эти команды"), ephemeral=True)
 
 			class AttackClass:
 				def __init__(self, member, channel, mod):
@@ -110,10 +111,10 @@ class UIModule(commands.Cog):
 				async def callback(self, mod):
 					if mod.author == self.mod.author:
 						await self.channel.set_permissions(self.member, read_messages = True, read_message_history=True, send_messages=self.permatt) #read_messages=self.permatt
-						await mod.send(embed = self.client.SuccessEmbed(title=f"", description = f"{self.member.mention}-{'право ответа включено' if self.permatt else 'право ответа выключено'}"), ephemeral=True)
+						await mod.send(embed = client.SuccessEmbed(title=f"", description = f"{self.member.mention}-{'право ответа включено' if self.permatt else 'право ответа выключено'}"), ephemeral=True)
 						self.permatt=not self.permatt
 					else:
-						await mod.send(embed = self.client.ErrEmbed(title=f"", description = f"Только судья может использовать эти команды"), ephemeral=True)
+						await mod.send(embed = client.ErrEmbed(title=f"", description = f"Только судья может использовать эти команды"), ephemeral=True)
 			class DefenceClass:
 				def __init__(self, member, channel, mod):
 					self.member=member
@@ -123,17 +124,17 @@ class UIModule(commands.Cog):
 				async def callback(self, mod):
 					if mod.author == self.mod.author:
 						await self.channel.set_permissions(self.member, read_messages = True, read_message_history=True, send_messages=self.permdef) #read_messages=self.permdef
-						await mod.send(embed = self.client.SuccessEmbed(title=f"", description = f"{self.member.mention}-{'право ответа включено' if self.permdef else 'право ответа выключено'}"), ephemeral=True)
+						await mod.send(embed = client.SuccessEmbed(title=f"", description = f"{self.member.mention}-{'право ответа включено' if self.permdef else 'право ответа выключено'}"), ephemeral=True)
 						self.permdef=not self.permdef
 					else:
-						await mod.send(embed = self.client.ErrEmbed(title=f"", description = f"Только судья может использовать эти команды"), ephemeral=True)
+						await mod.send(embed = client.ErrEmbed(title=f"", description = f"Только судья может использовать эти команды"), ephemeral=True)
 
 			if not any(i.mention in mentions for i in mod.author.roles):
-				await mod.send(embed = self.client.ErrEmbed(description = f"Вы не можете принять этот репорт"), ephemeral=True)
+				await mod.send(embed = client.ErrEmbed(description = f"Вы не можете принять этот репорт"), ephemeral=True)
 				return
 
 			if mod.author == ctx.author:
-				await mod.send(embed = self.client.ErrEmbed(description = f"Вы не можете принять свой же репорт"), ephemeral=True)
+				await mod.send(embed = client.ErrEmbed(description = f"Вы не можете принять свой же репорт"), ephemeral=True)
 				return
 
 			embed.set_footer(text = f"Принято\n{mod.author.name} ({mod.author.id})")
@@ -145,7 +146,7 @@ class UIModule(commands.Cog):
 				overwrites = {ctx.author: disnake.PermissionOverwrite(read_messages=True, send_messages=False, read_message_history=True, attach_files=True),
 							  mod.author: disnake.PermissionOverwrite(read_messages=True, send_messages=True, read_message_history=True, attach_files=True),
 							  member: disnake.PermissionOverwrite(read_messages=True, send_messages=False, read_message_history=True, attach_files=True),
-							  self.client.everyone: disnake.PermissionOverwrite(read_messages=False, send_messages=False, read_message_history=False)},
+							  client.everyone: disnake.PermissionOverwrite(read_messages=False, send_messages=False, read_message_history=False)},
 				category=ctx.guild.get_channel(1220744958961778850)
 			)
 
@@ -163,7 +164,7 @@ class UIModule(commands.Cog):
 			attack = AttackClass(ctx.author, parsing_channel, mod)
 			defence = DefenceClass(member, parsing_channel, mod)
 
-			pin = await parsing_channel.send( f"{mod.author.mention}" ,embed = self.client.AnswEmbed(title=f"Жалоба", description = f"Вы вызвались судить {member.mention} по жалобе от {ctx.author.mention}\n\
+			pin = await parsing_channel.send( f"{mod.author.mention}" ,embed = client.AnswEmbed(title=f"Жалоба", description = f"Вы вызвались судить {member.mention} по жалобе от {ctx.author.mention}\n\
 																															  ⚔️ - Дать {ctx.author.mention} право ответа\n\
 																															  ⚰️ - Дать {member.mention} право ответа\n\
 																															  ✅ - Виновен\n\
@@ -176,21 +177,21 @@ class UIModule(commands.Cog):
 			await pin.pin()
 
 		if member==ctx.author:
-			await ctx.send(embed = self.client.ErrEmbed(description = f'Нельзя подать жалобу на самого себя!', colour = 0xFF4500), ephemeral=True)
+			await ctx.send(embed = client.ErrEmbed(description = f'Нельзя подать жалобу на самого себя!', colour = 0xFF4500), ephemeral=True)
 			return
 		mentions = []
 
 		report_channel = disnake.utils.get(ctx.guild.channels, id = 1219644036378394746)
 
-		highest = [i for i in self.client.hierarchy if i in member.roles][0]
-		for i in range(0, self.client.hierarchy.index(highest)):
-			mentions.append(f"{self.client.hierarchy[i].mention}")
+		highest = [i for i in client.hierarchy if i in member.roles][0]
+		for i in range(0, client.hierarchy.index(highest)):
+			mentions.append(f"{client.hierarchy[i].mention}")
 
 
 		if len(mentions)==0:
-			mentions.append(f"{self.client.me.mention}")
+			mentions.append(f"{client.me.mention}")
 
-		report_embed = self.client.AnswEmbed(title=f"**Жалоба**", colour = 0xDC143C)
+		report_embed = client.AnswEmbed(title=f"**Жалоба**", colour = 0xDC143C)
 
 		report_embed.add_field(name=f"Обвинитель: ", value = f"{ctx.author.mention}\n({ctx.author.id})", inline=True)
 		report_embed.add_field(name=f"Обвиняемый: ", value = f"{member.mention}\n({member.id})", inline=True)
@@ -202,7 +203,7 @@ class UIModule(commands.Cog):
 		report_message = await report_channel.send(", ".join(mentions), embed = report_embed, view=view)
 		btn.callback = lambda mod: ReportCallback(ctx,member,report_message,reason,report_embed,mentions,mod)
 
-		await ctx.send(embed = self.client.SuccessEmbed(description = f'Жалоба на {member.mention} успешно подана', colour = 0x008000), ephemeral=True)
+		await ctx.send(embed = client.SuccessEmbed(description = f'Жалоба на {member.mention} успешно подана', colour = 0x008000), ephemeral=True)
 
 	'''
 
