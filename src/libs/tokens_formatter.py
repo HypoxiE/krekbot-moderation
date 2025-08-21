@@ -1,14 +1,16 @@
 
+import os
 TOKENS: dict[str, str] = {}
 
-with open("secrets/TOKEN_KrekAdminBot.txt") as file:
-	TOKENS = {'KrekAdminBot': file.read()}
+token_files = {
+	'KrekAdminBot': "secrets/TOKEN_KrekAdminBot.txt",
+	'KrekFunBot': "secrets/TOKEN_KrekFunBot.txt",
+	'KrekRimagochiBot': "secrets/TOKEN_KrekRimagochiBot.txt",
+	'KrekSupBot': "secrets/TOKEN_KrekSupBot.txt",
+	'KrekModBot': "secrets/TOKEN_KrekModBot.txt"
+}
 
-with open("secrets/TOKEN_KrekFunBot.txt") as file:
-	TOKENS = {'KrekFunBot': file.read()}
-
-with open("secrets/TOKEN_KrekRimagochiBot.txt") as file:
-	TOKENS = {'KrekRimagochiBot': file.read()}
-
-with open("secrets/TOKEN_KrekSupBot.txt") as file:
-	TOKENS = {'KrekSupBot': file.read()}
+for bot, path in token_files.items():
+	if os.path.exists(path):
+		with open(path, "r") as file:
+			TOKENS = {bot: file.read()}
