@@ -13,4 +13,4 @@ token_files = {
 for bot, path in token_files.items():
 	if os.path.exists(path):
 		with open(path, "r") as file:
-			TOKENS = {bot: file.read()}
+			TOKENS[bot] = file.read()
