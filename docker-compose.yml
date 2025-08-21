@@ -1,0 +1,15 @@
+
+services:
+  discord-moderation-bot:
+    build: .
+    image: discord-moderation-bot
+    container_name: discord-moderation-bot
+    restart: always
+    networks:
+      - postgres-network
+    env_file:
+      - .env
+
+networks:
+  postgres-network:
+    external: true

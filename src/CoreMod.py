@@ -14,7 +14,7 @@ import json
 import re
 
 from constants.global_constants import *
-from data.secrets.TOKENS import TOKENS
+from libs.tokens_formatter import TOKENS
 from database.db_classes import all_data as DataBaseClasses
 from managers.DataBaseManager import DatabaseManager
 from database.settings import config
