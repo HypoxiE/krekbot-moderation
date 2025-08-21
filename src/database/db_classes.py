@@ -14,7 +14,7 @@ class Base(DeclarativeBase):
 	def get_table_name(self):
 		return self.__tablename__
 
-	def to_dict(self, exclude: list[str] = None):
+	def to_dict(self, exclude: list[str] | None = None):
 		"""Конвертирует модель в словарь, исключая указанные поля."""
 		if exclude is None:
 			exclude = []

@@ -100,12 +100,12 @@ class DatabaseManager:
 			return backup_file
 
 	async def pg_restore(self, echo = False, backup_file = 'backups/backup_file.backup'):
-		conn = await self.DataBaseManager.engine.connect()
-		db_name = self.DataBaseManager.engine.url.database
-		user = self.DataBaseManager.engine.url.username
-		host = self.DataBaseManager.engine.url.host
-		port = self.DataBaseManager.engine.url.port
-		password = self.DataBaseManager.engine.url.password
+		conn = await self.engine.connect()
+		db_name = self.engine.url.database
+		user = self.engine.url.username
+		host = self.engine.url.host
+		port = self.engine.url.port
+		password = self.engine.url.password
 
 		os.environ['PGPASSWORD'] = password  # Установка пароля для подключения
 		command = [

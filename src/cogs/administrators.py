@@ -30,14 +30,25 @@ class AdminModule(commands.Cog):
 
 	@commands.slash_command(name="bot_mod_off")
 	async def BotModOff(self, ctx: disnake.ApplicationCommandInteraction):
+		if isinstance(ctx.author, disnake.User):
+			await ctx.send(embed=self.client.ErrEmbed(description=f'Невозможно в личных сообщениях'), ephemeral=True)
+			return
+		
 		if self.client.me in ctx.author.roles:
-			await ctx.send(embed=self.client.SuccessEmbed(description=f'Бот отключён', colour=0xff9900), ephemeral=True)
+			await ctx.send(embed=self.client.SuccessEmbed(description=f'Бот отключён'), ephemeral=True)
 			await self.client.BotOff()
 		else:
-			await ctx.send(embed=self.client.ErrEmbed(description=f'Не допустимо', colour=0xff9900), ephemeral=True)
+			await ctx.send(embed=self.client.ErrEmbed(description=f'Не допустимо'), ephemeral=True)
 
 	@commands.slash_command(name="очистка", administrator=True)
 	async def clear(self, ctx: disnake.AppCmdInter, count: int):
+		if isinstance(ctx.author, disnake.User):
+			await ctx.send(embed=self.client.ErrEmbed(description=f'Невозможно в личных сообщениях'), ephemeral=True)
+			return
+		if isinstance(ctx.channel, (disnake.DMChannel, disnake.GroupChannel, disnake.PartialMessageable)):
+			await ctx.send(embed=self.client.ErrEmbed(description=f'Неверный тип канала!'), ephemeral=True)
+			return
+		
 		if self.client.me in ctx.author.roles:
 			await ctx.channel.purge(limit=count)
 			await ctx.send(embed = self.client.SuccessEmbed(description = f'очищено {count} сообщений!', colour = 0xff9900), ephemeral=True)
@@ -51,7 +62,10 @@ class AdminModule(commands.Cog):
 													  is_admin: bool = commands.Param(description="Имеют ли пользователи в этой роли права администратора? *(только при создании)", name="администратор", default=False),
 													  is_moder: bool = commands.Param(description="Имеют ли пользователи в этой роли права модератора? *(только при создании)", name="модератор", default=False),
 													  delete_branch: str = commands.Param(description="Вы уверены, что хотите удалить ветвь? Для подтверждения впишите \"уверен\"", name="удаление", default=None)):
-
+		if isinstance(ctx.author, disnake.User):
+			await ctx.send(embed=self.client.ErrEmbed(description=f'Невозможно в личных сообщениях'), ephemeral=True)
+			return
+		
 		if not self.client.me in ctx.author.roles:
 			await ctx.send(embed = self.client.ErrEmbed(description = f'Недостаточно прав', colour = 0xff9900), ephemeral=True)
 			return 1
@@ -101,16 +115,20 @@ class AdminModule(commands.Cog):
 						
 
 	@commands.slash_command(description="Позволяет менять/создавать/удалять роли в системе персонала", name="правка_роли", administrator=True)
-	async def edit_role(self, ctx: disnake.AppCmdInter, roleid: str = commands.Param(description="Укажите id роли (используются идентификаторы дискорда)", name="id"),
+	async def edit_role(self, ctx: disnake.AppCmdInter, roleid_str: str = commands.Param(description="Укажите id роли (используются идентификаторы дискорда)", name="id"),
 													   staffsalary: int = commands.Param(description="Укажите зарплату этой роли", name="зарплата", default=0),
 													   branchid: int = commands.Param(description="Укажите id ветви для этой роли *(только при создании)", name="ветвь", default=None),
 													   layer: int = commands.Param(description="Укажите слой этой роли в ветке (у ролей нижних слоёв есть власть над верхними)", name="слой", default=None),
 													   delete_role: str = commands.Param(description="Вы уверены, что хотите удалить роль из системы? Для подтверждения впишите \"уверен\"", name="удаление", default=None),):
+		if isinstance(ctx.author, disnake.User):
+			await ctx.send(embed=self.client.ErrEmbed(description=f'Невозможно в личных сообщениях'), ephemeral=True)
+			return
+		
 		if not self.client.me in ctx.author.roles:
 			await ctx.send(embed = self.client.ErrEmbed(description = f'Недостаточно прав', colour = 0xff9900), ephemeral=True)
 			return 1
 
-		roleid = int(roleid)
+		roleid = int(roleid_str)
 
 		staff_roles_model = self.DataBaseManager.models['staff_roles'].m
 		async with self.DataBaseManager.session() as session:
@@ -153,13 +171,17 @@ class AdminModule(commands.Cog):
 					return 0
 
 	@commands.slash_command(description="Позволяет создавать/удалять пользователей в системе персонала", name="правка_пользователя", administrator=True)
-	async def edit_member(self, ctx: disnake.AppCmdInter, userid: str = commands.Param(description="Укажите id пользователя (используются идентификаторы дискорда)", name="id"),
+	async def edit_member(self, ctx: disnake.AppCmdInter, userid_str: str = commands.Param(description="Укажите id пользователя (используются идентификаторы дискорда)", name="id"),
 														  delete_user: str = commands.Param(description="Вы уверены, что хотите удалить пользователя из системы? Для подтверждения впишите \"уверен\"", name="удаление", default=None)):
+		if isinstance(ctx.author, disnake.User):
+			await ctx.send(embed=self.client.ErrEmbed(description=f'Невозможно в личных сообщениях'), ephemeral=True)
+			return
+		
 		if not self.client.me in ctx.author.roles:
 			await ctx.send(embed = self.client.ErrEmbed(description = f'Недостаточно прав', colour = 0xff9900), ephemeral=True)
 			return 1
 
-		userid = int(userid)
+		userid = int(userid_str)
 
 		staff_users_model = self.DataBaseManager.models['staff_users'].m
 		async with self.DataBaseManager.session() as session:
@@ -187,15 +209,19 @@ class AdminModule(commands.Cog):
 					return 1
 		
 	@commands.slash_command(description="!!ВАЖНО!! ИСПОЛЬЗОВАНИЕ ТОЛЬКО В ЭКСТРЕННЫХ СЛУЧАЯХ! Назначает пользователей на роль", name="назначить_пользователя", administrator=True)
-	async def appoint_member(self, ctx: disnake.AppCmdInter, userid: str = commands.Param(description="Укажите id пользователя (используются идентификаторы дискорда)", name="пользователь"),
-															roleid: str = commands.Param(description="Укажите id роли (используются идентификаторы дискорда)", name="роль"),
+	async def appoint_member(self, ctx: disnake.AppCmdInter, userid_str: str = commands.Param(description="Укажите id пользователя (используются идентификаторы дискорда)", name="пользователь"),
+															roleid_str: str = commands.Param(description="Укажите id роли (используются идентификаторы дискорда)", name="роль"),
 															description: str = commands.Param(description="Описание", name="описание", default=None)):
+		if isinstance(ctx.author, disnake.User):
+			await ctx.send(embed=self.client.ErrEmbed(description=f'Невозможно в личных сообщениях'), ephemeral=True)
+			return
+
 		if not self.client.me in ctx.author.roles:
 			await ctx.send(embed = self.client.ErrEmbed(description = f'Недостаточно прав', colour = 0xff9900), ephemeral=True)
 			return 1
 
-		userid = int(userid)
-		roleid = int(roleid)
+		userid = int(userid_str)
+		roleid = int(roleid_str)
 
 		async with self.DataBaseManager.session() as session:
 			async with session.begin():

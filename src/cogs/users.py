@@ -27,10 +27,12 @@ class UIModule(commands.Cog):
 		print(f'KrekModBot UI module activated')
 
 	@commands.slash_command(description="Показывает действительные наказания пользователя", name="наказания")
-	async def penalties(self, ctx: disnake.AppCmdInter, member: disnake.Member = None):
+	async def penalties(self, ctx: disnake.AppCmdInter, input_member: disnake.Member | None= None):
 		models = self.client.DataBaseManager.model_classes
-		if not member:
+		if input_member is None:
 			member = ctx.author
+		else:
+			member = input_member
 		embed =  self.client.AnswEmbed(title="Наказания", description = f"{member.mention}")
 		embed.set_thumbnail(url=member.avatar)
 
@@ -181,7 +183,13 @@ class UIModule(commands.Cog):
 			return
 		mentions = []
 
+		if ctx.guild is None:
+			await ctx.send(embed = client.ErrEmbed(description = f'Нельзя подать жалобу в личных сообщениях!', colour = 0xFF4500), ephemeral=True)
+			return
+		
 		report_channel = disnake.utils.get(ctx.guild.channels, id = 1219644036378394746)
+		if not isinstance(report_channel, disnake.TextChannel):
+			raise ValueError("not isinstance(report_channel, disnake.TextChannel)")
 
 		highest = [i for i in client.hierarchy if i in member.roles][0]
 		for i in range(0, client.hierarchy.index(highest)):

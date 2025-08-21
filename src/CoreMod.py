@@ -192,7 +192,7 @@ class AnyBots(commands.Bot):
 			matches = re.findall(pattern, time_str)
 
 			for value, _, unit in matches:
-				time_units[unit] += float(value)
+				time_units[unit] += value
 
 			return FormatedTime(time_units)
 
@@ -208,6 +208,8 @@ class AnyBots(commands.Bot):
 
 		krekchat = await self.fetch_guild(self.krekchat.id)
 		bt_channel = await krekchat.fetch_channel(self.bots_talk_protocol_channel_id)
+		if not isinstance(bt_channel, disnake.TextChannel):
+			raise ValueError("bt_channel не найден")
 
 		punishment_keys = ['type', 'options', 'severity', 'member', 'moderator']
 		complaint_keys = ['type', 'options', 'accepted', 'attack_member', 'defence_member', 'moderator']
@@ -321,7 +323,7 @@ class MainBot(AnyBots):
 		return wrapper
 
 	@tasks.loop(seconds=30)
-	@catch_exceptions.__func__
+	@catch_exceptions
 	async def watchdog(self):
 
 		for loop in self.loops:
@@ -335,7 +337,7 @@ class MainBot(AnyBots):
 
 	
 	@tasks.loop(seconds=60)
-	@catch_exceptions.__func__
+	@catch_exceptions
 	async def SendingDeferredMessages(self):
 		async with self.DataBaseManager.session() as session:
 			async with session.begin():
@@ -351,16 +353,18 @@ class MainBot(AnyBots):
 					await session.delete(message)
 
 	@tasks.loop(seconds=3600)
-	@catch_exceptions.__func__
+	@catch_exceptions
 	async def MakeBackups(self):
 		backup_file = await self.DataBaseManager.pg_dump()
 
 		krekchat = await self.fetch_guild(self.krekchat.id)
 		backups_channel = await krekchat.fetch_channel(self.databases_backups_channel_id)
+		if not isinstance(backups_channel, disnake.TextChannel):
+			raise ValueError("backups_channel не найден")
 		await backups_channel.send(content=f"Бэкап бд за {datetime.datetime.now()}:", file=disnake.File(backup_file))
 
 	@tasks.loop(seconds=60)
-	@catch_exceptions.__func__
+	@catch_exceptions
 	async def CheckDataBases(self):
 		self.krekchat = await self.fetch_guild(self.krekchat.id)
 		members = [i async for i in self.krekchat.fetch_members(limit=None)]
@@ -547,29 +551,30 @@ class MainBot(AnyBots):
 		if not inter.response.is_done():...
 			#await inter.response.send_message(embed=self.ErrEmbed(description=f'Ответ не был отправлен, возможно, кнопка перестала действовать'), ephemeral=True)
 
-	async def on_message(self, msg):
+	async def on_message(self, message):
 		
-		if msg.author.bot or not self.task_start or not self.ready_once.is_set():
-			return 0
+		if message.author.bot or not self.task_start or not self.ready_once.is_set():
+			return
 
-		if msg.author.id == 479210801891115009 and msg.content == "botsoff":
-			await msg.reply(embed=self.AnswEmbed(description=f'Бот отключён', colour=0xff9900))
+		if message.author.id == 479210801891115009 and message.content == "botsoff":
+			await message.reply(embed=self.AnswEmbed(description=f'Бот отключён', colour=0xff9900))
 			await self.BotOff()
-			return 0
-		if type(msg.channel).__name__!="DMChannel" and re.match(r"^⚠️?жалоба-от-(.+)-на-(.+)$", msg.channel.name):
-			log_reports = disnake.utils.get(msg.guild.channels, id=1242373230384386068)
-			files=[]
-			for att in msg.attachments:
-				files = files + [await att.to_file()]
-			log_mess = await log_reports.send(f"Чат: `{msg.channel.name}`({msg.channel.id}).\n"
-											  f"Автор: `{msg.author.name} ({msg.author.id})`\n" +
-											  (f"Сообщение: ```{msg.content}```\n" if msg.content else ""),
-											  files = files)
-			return 0
+			return
+		if type(message.channel).__name__!="DMChannel" and re.match(r"^⚠️?жалоба-от-(.+)-на-(.+)$", message.channel.name):
+			log_reports = disnake.utils.get(message.guild.channels, id=1242373230384386068)
+			if isinstance(log_reports, disnake.TextChannel):
+				files=[]
+				for att in message.attachments:
+					files = files + [await att.to_file()]
+				log_mess = await log_reports.send(f"Чат: `{message.channel.name}`({message.channel.id}).\n"
+												f"Автор: `{message.author.name} ({message.author.id})`\n" +
+												(f"Сообщение: ```{message.content}```\n" if message.content else ""),
+												files = files)
+				return
 
 		async with self.DataBaseManager.session() as session:
-			if (await self.DataBaseManager.model_classes['staff_users'].is_admin_or_moder_by_id(msg.author.id, self.DataBaseManager, session)):
-				return 0
+			if (await self.DataBaseManager.model_classes['staff_users'].is_admin_or_moder_by_id(message.author.id, self.DataBaseManager, session)):
+				return
 
 		def extract_root_domain(url):
 			ext = tldextract.extract(url)
@@ -577,10 +582,12 @@ class MainBot(AnyBots):
 				return None
 			return f"{ext.domain}.{ext.suffix}".lower()
 
-		log = disnake.utils.get(msg.guild.channels, id=893065482263994378)
+		log = disnake.utils.get(message.guild.channels, id=893065482263994378)
+		if not isinstance(log, disnake.TextChannel):
+			raise TypeError("Проверь канал логов для сомнительных ссылок")
 
 		url_pattern = re.compile(r'https?://[^\s]+')
-		links = re.findall(url_pattern, msg.content)
+		links = re.findall(url_pattern, message.content)
 		аllowed_domains_model = self.DataBaseManager.model_classes['аllowed_domains']
 		async with self.DataBaseManager.session() as session:
 			for link in links:
@@ -589,28 +596,28 @@ class MainBot(AnyBots):
 				link_in_wl = (await session.execute(stmt)).scalars().first()
 
 				if link_in_wl is None:
-					await log.send(f"{msg.author.mention}({msg.author.id}) отправил в чат {msg.channel.mention} сомнительную ссылку, которой нет в вайлисте:```{msg.content}```")
-					mess = await msg.reply(embed=self.ErrEmbed(description=f'Этой ссылки нет в белом списке, но заявка на добавление уже отправлена. Если это срочно, свяжитесь с разработчиком или модераторами.'))
-					await msg.delete()
+					await log.send(f"{message.author.mention}({message.author.id}) отправил в чат {message.channel.mention} сомнительную ссылку, которой нет в вайлисте:```{message.content}```")
+					mess = await message.reply(embed=self.ErrEmbed(description=f'Этой ссылки нет в белом списке, но заявка на добавление уже отправлена. Если это срочно, свяжитесь с разработчиком или модераторами.'))
+					await message.delete()
 					await asyncio.sleep(20)
 					await mess.delete()
-					return 1
+					return
 
-		message_words = msg.content.replace("/", " ").split(" ")
+		message_words = message.content.replace("/", " ").split(" ")
 		if "discord.gg" in message_words:
 			for i in range(len(message_words)):
-				if message_words[i]=="discord.gg" and not msg.author.bot:
+				if message_words[i]=="discord.gg" and not message.author.bot:
 					try:
 						inv = await self.fetch_invite(url = "https://discord.gg/"+message_words[i+1])
-						if inv.guild.id != 490445877903622144:
-							await log.send(f"{msg.author.mention}({msg.author.id}) отправил в чат {msg.channel.mention} сомнительную ссылку на сервер '{inv.guild.name}':```{msg.content}```")
-							mess = await msg.reply(embed=self.ErrEmbed(description=f'Ссылки-приглашения запрещены!', colour=0xff9900))
-							await msg.delete()
+						if (isinstance(inv.guild, disnake.PartialInviteGuild) or isinstance(inv.guild, disnake.Guild)) and inv.guild.id != 490445877903622144:
+							await log.send(f"{message.author.mention}({message.author.id}) отправил в чат {message.channel.mention} сомнительную ссылку на сервер '{inv.guild.name}':```{message.content}```")
+							mess = await message.reply(embed=self.ErrEmbed(description=f'Ссылки-приглашения запрещены!', colour=0xff9900))
+							await message.delete()
 							await asyncio.sleep(20)
 							await mess.delete()
 							break
 					except disnake.errors.NotFound:
-						await log.send(f"{msg.author.mention}({msg.author.id}) отправил в чат {msg.channel.mention} [сомнительную ссылку]({msg.jump_url}) на неизвестный сервер:```{msg.content}```")
+						await log.send(f"{message.author.mention}({message.author.id}) отправил в чат {message.channel.mention} [сомнительную ссылку]({message.jump_url}) на неизвестный сервер:```{message.content}```")
 
 
 	
@@ -681,13 +688,15 @@ async def main():
 	except Exception as e:
 		print(f"Произошла критическая ошибка: {e}")
 	finally:
-		await bot.BotOff()
+		if bot is not None:
+			await bot.BotOff()
 
 		for bot in all_bots:
 			if not bot.is_closed():
 				await bot.close()
 
-		await DataBase.close()
+		if DataBase is not None:
+			await DataBase.close()
 
 		current_task = asyncio.current_task()
 		pending = [t for t in asyncio.all_tasks() if t is not current_task and not t.done()]

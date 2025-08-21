@@ -68,6 +68,7 @@ class ModerModule(commands.Cog):
 					def __init__(self, title, member):
 						self.member = member
 						self.title = title
+						components = []
 						if title.split(":")[0] == "textmute" or title.split(":")[0] == "voicemute" or title.split(":")[0] == "ban":
 							components = [
 							disnake.ui.TextInput(label="Время", placeholder="Например: 1д15ч9мин", custom_id="time", style=disnake.TextInputStyle.short, max_length=100),
@@ -89,10 +90,13 @@ class ModerModule(commands.Cog):
 
 					async def callback(self, interaction: disnake.Interaction):
 
+						if interaction.guild is None:
+							raise TypeError("interaction.guild is None")
+
 						async def voicemute(interaction: disnake.MessageInteraction, member: disnake.Member, time, reason):
 							role = self.client.voice_mute
 							await member.add_roles(role)
-							await member.move_to(None)
+							await member.move_to(None) # type: ignore
 							async with DataBaseManager.session() as session:
 								async with session.begin():
 									new_punishment = models['punishment_mutes_voice'](user_id = member.id, reason = reason, time_end = time, time_warn = None, moderator_id = interaction.author.id)
@@ -106,7 +110,7 @@ class ModerModule(commands.Cog):
 									session.add(new_punishment)
 						async def ban(interaction: disnake.MessageInteraction, member: disnake.Member, time, reason):
 								role = self.client.ban_role
-								await member.move_to(None)
+								await member.move_to(None) # type: ignore
 								if time-datetime.datetime.timestamp(datetime.datetime.now())>0:
 									await member.add_roles(role)
 									async with DataBaseManager.session() as session:
@@ -119,6 +123,9 @@ class ModerModule(commands.Cog):
 									async with session.begin():
 										new_punishment = models['punishment_perms'](user_id = member.id, reason = reason, moderator_id = interaction.author.id)
 										session.add(new_punishment)
+
+								if interaction.guild is None:
+									raise TypeError("interaction.guild is None")
 								for channel in interaction.guild.channels:
 									if isinstance(channel, disnake.TextChannel):
 										await channel.purge(limit=10, check=lambda m: m.author==member)
@@ -147,6 +154,10 @@ class ModerModule(commands.Cog):
 						newnick = ""
 						if self.title.split(':')[0] == "reprimand":
 							embed.add_field(name = 'Ветка', value = self.title.split(':')[1], inline = False)
+
+						if isinstance(interaction, disnake.Interaction):
+							raise TypeError("modal interaction is interaction")
+						
 						for key, value in interaction.text_values.items():
 							if key == "time":
 								formated_time = self.client.TimeFormater(value)
@@ -295,6 +306,8 @@ class ModerModule(commands.Cog):
 
 						return self
 					async def callback(self, interaction:disnake.MessageInteraction):
+						if interaction.values is None or interaction.guild is None:
+							raise TypeError("interaction.values is None or interaction.guild is None")
 						values = interaction.values[0]
 						try:
 							pentype, member, penaltid = values.split(":")
@@ -302,6 +315,8 @@ class ModerModule(commands.Cog):
 							return
 						if values:
 							logs_channel = disnake.utils.get(interaction.guild.channels, id = 490730651629387776)
+							if not isinstance(logs_channel, disnake.TextChannel):
+								raise ValueError("logs_channel is None")
 
 							async with DataBaseManager.session() as session:
 								async with session.begin():
@@ -471,9 +486,9 @@ class ModerModule(commands.Cog):
 
 	@commands.slash_command(description="Позволяет повысить пользователя в указанной ветке", name="повысить", administrator=True)
 	async def promote(self, ctx: disnake.AppCmdInter, branchid: int = commands.Param(description="Укажите id ветви", name="ветвь", default = None),
-													  userid: str = commands.Param(description="Укажите id пользователя (используются идентификаторы дискорда)", name="пользователь")):
+													  userid_str: str = commands.Param(description="Укажите id пользователя (используются идентификаторы дискорда)", name="пользователь")):
 
-		userid = int(userid)
+		userid = int(userid_str)
 
 		async with self.DataBaseManager.session() as session:
 			async with session.begin():
@@ -544,6 +559,8 @@ class ModerModule(commands.Cog):
 
 				if member_role is not None:
 					member_role_index = next((i for i, role in enumerate(branch_roles) if role.id == member_role.role.id), None)
+					if member_role_index is None:
+						raise ValueError("member_role_index is None")
 
 					if member_role_index + 1 >= len(branch_roles):
 						await ctx.send(embed = self.client.ErrEmbed(description = f'Этот пользователь уже находится на самой высокой должности в данной ветви'))
@@ -584,9 +601,9 @@ class ModerModule(commands.Cog):
 
 	@commands.slash_command(description="Позволяет понизить пользователя в указанной ветке", name="понизить", administrator=True)
 	async def demote(self, ctx: disnake.AppCmdInter, branchid: int = commands.Param(description="Укажите id ветви", name="ветвь", default = None),
-													  userid: str = commands.Param(description="Укажите id пользователя (используются идентификаторы дискорда)", name="пользователь")):
+													  userid_str: str = commands.Param(description="Укажите id пользователя (используются идентификаторы дискорда)", name="пользователь")):
 		
-		userid = int(userid)
+		userid = int(userid_str)
 
 		async with self.DataBaseManager.session() as session:
 			async with session.begin():
@@ -657,6 +674,8 @@ class ModerModule(commands.Cog):
 
 				if member_role is not None:
 					member_role_index = next((i for i, role in enumerate(branch_roles) if role.id == member_role.role.id), None)
+					if member_role_index is None:
+						raise ValueError("member_role_index is None")
 
 					if member_role_index == 0:
 						stmt = (
