@@ -27,7 +27,8 @@ class UIModule(commands.Cog):
 		self.client.logger.info(f'KrekModBot UI module activated')
 
 	@commands.slash_command(description="Показывает действительные наказания пользователя", name="наказания")
-	async def penalties(self, ctx: disnake.AppCmdInter, input_member: disnake.Member | None= None):
+	async def penalties(self, ctx: disnake.AppCmdInter,
+					 input_member: disnake.Member | None = commands.Param(description="Кто интересует?", default=None, name="пользователь")):
 		models = self.client.DataBaseManager.model_classes
 		if input_member is None:
 			member = ctx.author
