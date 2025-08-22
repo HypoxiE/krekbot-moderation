@@ -1,3 +1,6 @@
+import logging
+logging.basicConfig(level=logging.INFO, force=True, format="%(asctime)s %(levelname)s: %(message)s", datefmt="%d-%m-%Y %H:%M:%S")
+
 import inspect
 import disnake
 from disnake.ext import commands
@@ -12,7 +15,6 @@ from fnmatch import fnmatch
 import traceback
 import json
 import re
-import logging
 
 from constants.global_constants import *
 from libs.tokens_formatter import TOKENS
@@ -27,8 +29,7 @@ from sqlalchemy.schema import CreateTable
 
 import tldextract
 
-
-logging.basicConfig(level=logging.INFO, force=True, format="%(asctime)s %(name)s %(levelname)s: %(message)s", datefmt="%H:%M:%S")
+logger = logging.getLogger(__name__)
 
 class AnyBots(commands.Bot):
 	logger = logging.getLogger(__name__)
@@ -324,7 +325,7 @@ class MainBot(AnyBots):
 			try:
 				return await func(*args, **kwargs)
 			except Exception:
-				logging.exception(f"{datetime.datetime.now().strftime('%H:%M:%S %d-%m-%Y')}:: [ERROR] {func.__name__}:\n{traceback.format_exc()}")
+				logger.exception(f"{datetime.datetime.now().strftime('%H:%M:%S %d-%m-%Y')}:: [ERROR] {func.__name__}:\n{traceback.format_exc()}")
 		return wrapper
 
 	@tasks.loop(seconds=30)
@@ -645,19 +646,19 @@ async def run_bot(bot, token, stop_event):
 	try:
 		await bot.start(token)
 	except Exception as e:
-		logging.exception(f"Бот {bot.user.name if hasattr(bot, 'user') else 'Unknown'} упал с ошибкой: {e}")
+		logger.exception(f"Бот {bot.user.name if hasattr(bot, 'user') else 'Unknown'} упал с ошибкой: {e}")
 		stop_event.set()  # Сигнализируем об остановке
 
 async def monitor_stop(stop_event, bots):
 	await stop_event.wait()
-	logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S %d-%m-%Y')}:: Получен сигнал остановки, завершаю всех ботов...")
+	logger.info(f"{datetime.datetime.now().strftime('%H:%M:%S %d-%m-%Y')}:: Получен сигнал остановки, завершаю всех ботов...")
 
 	for bot in bots:
 		if not bot.is_closed():
 			try:
 				await bot.close()
 			except Exception as e:
-				logging.exception(f"Ошибка при закрытии бота: {e}")
+				logger.exception(f"Ошибка при закрытии бота: {e}")
 
 	await asyncio.sleep(0.1)
 
@@ -689,9 +690,9 @@ async def main():
 		await asyncio.gather(*bot_tasks, monitor_task)
 
 	except KeyboardInterrupt:
-		logging.info("Боты остановлены по запросу пользователя")
+		logger.info("Боты остановлены по запросу пользователя")
 	except Exception as e:
-		logging.exception(f"Произошла критическая ошибка: {e}")
+		logger.exception(f"Произошла критическая ошибка: {e}")
 	finally:
 		if bot is not None:
 			await bot.BotOff()
