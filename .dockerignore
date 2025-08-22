@@ -55,5 +55,3 @@ Dockerfile
 # Temp files
 tmp/
 temp/
-
-backups/

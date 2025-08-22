@@ -1,12 +1,12 @@
-
 venv/
+
+docs/
 
 __pycache__/
 *.pyc
 
-.secrets
-src/data/secrets/
-src/backups/
+*.db
+*.sql
 
-secrets/
 .env
+secrets/
