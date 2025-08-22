@@ -29,7 +29,7 @@ class ModerModule(commands.Cog):
 
 	@commands.Cog.listener()
 	async def on_ready(self):
-		print(f'KrekModBot moderation module activated')
+		self.client.logger.info(f'KrekModBot moderation module activated')
 
 	@commands.slash_command(name="действие")
 	async def action_slash(self, ctx: disnake.AppCmdInter, member: disnake.Member):

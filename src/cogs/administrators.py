@@ -26,7 +26,7 @@ class AdminModule(commands.Cog):
 
 	@commands.Cog.listener()
 	async def on_ready(self):
-		print(f'KrekModBot admin module activated')
+		self.client.logger.info(f'KrekModBot admin module activated')
 
 	@commands.slash_command(name="bot_mod_off")
 	async def BotModOff(self, ctx: disnake.ApplicationCommandInteraction):

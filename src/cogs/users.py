@@ -24,7 +24,7 @@ class UIModule(commands.Cog):
 
 	@commands.Cog.listener()
 	async def on_ready(self):
-		print(f'KrekModBot UI module activated')
+		self.client.logger.info(f'KrekModBot UI module activated')
 
 	@commands.slash_command(description="Показывает действительные наказания пользователя", name="наказания")
 	async def penalties(self, ctx: disnake.AppCmdInter, input_member: disnake.Member | None= None):

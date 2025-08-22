@@ -12,6 +12,7 @@ from fnmatch import fnmatch
 import traceback
 import json
 import re
+import logging
 
 from constants.global_constants import *
 from libs.tokens_formatter import TOKENS
@@ -26,7 +27,11 @@ from sqlalchemy.schema import CreateTable
 
 import tldextract
 
+
+logging.basicConfig(level=logging.INFO, force=True, format="%(asctime)s %(name)s %(levelname)s: %(message)s", datefmt="%H:%M:%S")
+
 class AnyBots(commands.Bot):
+	logger = logging.getLogger(__name__)
 	'''
 	
 	
@@ -44,7 +49,7 @@ class AnyBots(commands.Bot):
 
 	async def on_ready(self):
 		self.krekchat = await self.fetch_guild(constants["krekchat"])
-		print(self.krekchat.name)
+		self.logger.info(self.krekchat.name)
 		self.sponsors = [disnake.utils.get(self.krekchat.roles, id=i) for i in constants["sponsors"]]
 		self.text_mute = disnake.utils.get(self.krekchat.roles, id=constants["mutes"][0])
 		self.voice_mute = disnake.utils.get(self.krekchat.roles, id=constants["mutes"][1])
@@ -62,7 +67,7 @@ class AnyBots(commands.Bot):
 		self.hierarchy = [disnake.utils.get(self.krekchat.roles, id=i) for i in constants["hierarchy"]]
 		# /lists
 		await self.change_presence(status=disnake.Status.online, activity=disnake.Game("Работаю"))
-		print(f"{datetime.datetime.now().strftime('%H:%M:%S %d-%m-%Y')}::  KrekModBot activated")
+		self.logger.info(f"{datetime.datetime.now().strftime('%H:%M:%S %d-%m-%Y')}::  KrekModBot activated")
 
 	def TimeFormater(self, time_str: str = "", *,
 					years: float = 0, months: float = 0, weeks: float = 0, days: float = 0, hours: float = 0, minutes: float = 0, seconds: float = 0,
@@ -308,7 +313,7 @@ class MainBot(AnyBots):
 	# 	if self.stop_event.is_set():
 	# 		pass
 	# 	else:
-	# 		print(f"{datetime.datetime.now().strftime('%H:%M:%S %d-%m-%Y')}:: Соединение с дискордом разорвано")
+	# 		self.logger.error(f"{datetime.datetime.now().strftime('%H:%M:%S %d-%m-%Y')}:: Соединение с дискордом разорвано")
 	# 		await self.BotOff()
 
 	@staticmethod
@@ -319,7 +324,7 @@ class MainBot(AnyBots):
 			try:
 				return await func(*args, **kwargs)
 			except Exception:
-				print(f"{datetime.datetime.now().strftime('%H:%M:%S %d-%m-%Y')}:: [ERROR] {func.__name__}:\n{traceback.format_exc()}")
+				logging.exception(f"{datetime.datetime.now().strftime('%H:%M:%S %d-%m-%Y')}:: [ERROR] {func.__name__}:\n{traceback.format_exc()}")
 		return wrapper
 
 	@tasks.loop(seconds=30)
@@ -331,7 +336,7 @@ class MainBot(AnyBots):
 				continue
 
 			if not loop.is_running():
-				print(f"{datetime.datetime.now().strftime('%H:%M:%S %d-%m-%Y')}:: Обнаружено падение {loop.coro.__name__}, перезапуск цикла...")
+				self.logger.error(f"{datetime.datetime.now().strftime('%H:%M:%S %d-%m-%Y')}:: Обнаружено падение {loop.coro.__name__}, перезапуск цикла...")
 				loop.cancel()
 		
 
@@ -640,19 +645,19 @@ async def run_bot(bot, token, stop_event):
 	try:
 		await bot.start(token)
 	except Exception as e:
-		print(f"Бот {bot.user.name if hasattr(bot, 'user') else 'Unknown'} упал с ошибкой: {e}")
+		logging.exception(f"Бот {bot.user.name if hasattr(bot, 'user') else 'Unknown'} упал с ошибкой: {e}")
 		stop_event.set()  # Сигнализируем об остановке
 
 async def monitor_stop(stop_event, bots):
 	await stop_event.wait()
-	print(f"{datetime.datetime.now().strftime('%H:%M:%S %d-%m-%Y')}:: Получен сигнал остановки, завершаю всех ботов...")
+	logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S %d-%m-%Y')}:: Получен сигнал остановки, завершаю всех ботов...")
 
 	for bot in bots:
 		if not bot.is_closed():
 			try:
 				await bot.close()
 			except Exception as e:
-				print(f"Ошибка при закрытии бота: {e}")
+				logging.exception(f"Ошибка при закрытии бота: {e}")
 
 	await asyncio.sleep(0.1)
 
@@ -684,9 +689,9 @@ async def main():
 		await asyncio.gather(*bot_tasks, monitor_task)
 
 	except KeyboardInterrupt:
-		print("Боты остановлены по запросу пользователя")
+		logging.info("Боты остановлены по запросу пользователя")
 	except Exception as e:
-		print(f"Произошла критическая ошибка: {e}")
+		logging.exception(f"Произошла критическая ошибка: {e}")
 	finally:
 		if bot is not None:
 			await bot.BotOff()
