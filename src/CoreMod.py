@@ -144,7 +144,7 @@ class AnyBots(commands.Bot):
 			def to_dict(self):
 				return self.time_units
 
-		time_units = {'years': 0, 'months': 0, 'weeks': 0, 'days': 0, 'hours': 0, 'minutes': 0, 'seconds': 0}
+		time_units = {'years': 0.0, 'months': 0.0, 'weeks': 0.0, 'days': 0.0, 'hours': 0.0, 'minutes': 0.0, 'seconds': 0.0}
 		if any([years, months, weeks, days, hours, minutes, seconds]):
 			time_units = {'years': years, 'months': months, 'weeks': weeks, 'days': days, 'hours': hours, 'minutes': minutes, 'seconds': seconds}
 
@@ -181,6 +181,7 @@ class AnyBots(commands.Bot):
 				'd': 'days',
 				'h': 'hours',
 				'm': 'minutes',
+				'sec': 'seconds',
 				's': 'seconds',
 				'c': 'seconds'
 			}
@@ -198,7 +199,7 @@ class AnyBots(commands.Bot):
 			matches = re.findall(pattern, time_str)
 
 			for value, _, unit in matches:
-				time_units[unit] += value
+				time_units[unit] += float(value)
 
 			return FormatedTime(time_units)
 
