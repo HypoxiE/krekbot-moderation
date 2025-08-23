@@ -88,12 +88,12 @@ class ModerModule(commands.Cog):
 							]
 						super().__init__(title = title, components = components, timeout=300)
 
-					async def callback(self, interaction: disnake.Interaction):
+					async def callback(self, interaction: disnake.ModalInteraction):
 
 						if interaction.guild is None:
 							raise TypeError("interaction.guild is None")
 
-						async def voicemute(interaction: disnake.MessageInteraction, member: disnake.Member, time, reason):
+						async def voicemute(interaction: disnake.Interaction, member: disnake.Member, time, reason):
 							role = self.client.voice_mute
 							await member.add_roles(role)
 							await member.move_to(None) # type: ignore
@@ -101,14 +101,14 @@ class ModerModule(commands.Cog):
 								async with session.begin():
 									new_punishment = models['punishment_mutes_voice'](user_id = member.id, reason = reason, time_end = time, time_warn = None, moderator_id = interaction.author.id)
 									session.add(new_punishment)
-						async def textmute(interaction: disnake.MessageInteraction, member: disnake.Member, time, reason):
+						async def textmute(interaction: disnake.Interaction, member: disnake.Member, time, reason):
 							role = self.client.text_mute
 							await member.add_roles(role)
 							async with DataBaseManager.session() as session:
 								async with session.begin():
 									new_punishment = models['punishment_mutes_text'](user_id = member.id, reason = reason, time_end = time, time_warn = None, moderator_id = interaction.author.id)
 									session.add(new_punishment)
-						async def ban(interaction: disnake.MessageInteraction, member: disnake.Member, time, reason):
+						async def ban(interaction: disnake.Interaction, member: disnake.Member, time, reason):
 								role = self.client.ban_role
 								await member.move_to(None) # type: ignore
 								if time-datetime.datetime.timestamp(datetime.datetime.now())>0:
@@ -129,17 +129,17 @@ class ModerModule(commands.Cog):
 								for channel in interaction.guild.channels:
 									if isinstance(channel, disnake.TextChannel):
 										await channel.purge(limit=10, check=lambda m: m.author==member)
-						async def warning(interaction: disnake.MessageInteraction, member: disnake.Member, reason):
+						async def warning(interaction: disnake.Interaction, member: disnake.Member, reason):
 							async with DataBaseManager.session() as session:
 								async with session.begin():
 									new_punishment = models['punishment_warns'](user_id = member.id, reason = reason, time_warn = float(self.client.TimeFormater(days = 30)), moderator_id = interaction.author.id)
 									session.add(new_punishment)
-						async def reprimand(interaction: disnake.MessageInteraction, member: disnake.Member, branchid, reason):
+						async def reprimand(interaction: disnake.Interaction, member: disnake.Member, branchid, reason):
 							async with DataBaseManager.session() as session:
 								async with session.begin():
 									new_punishment = models['punishment_reprimands'](user_id = member.id, branch_id = branchid, reason = reason, time_warn = float(self.client.TimeFormater(days = 80)), designated_user_id = interaction.author.id)
 									session.add(new_punishment)
-						async def changenick(interaction: disnake.MessageInteraction, member: disnake.Member, newnick):
+						async def changenick(interaction: disnake.Interaction, member: disnake.Member, newnick):
 							await member.edit(nick=newnick)
 
 						await interaction.response.defer(ephemeral=True)
@@ -154,9 +154,6 @@ class ModerModule(commands.Cog):
 						newnick = ""
 						if self.title.split(':')[0] == "reprimand":
 							embed.add_field(name = 'Ветка', value = self.title.split(':')[1], inline = False)
-
-						if isinstance(interaction, disnake.Interaction):
-							raise TypeError("modal interaction is interaction")
 						
 						for key, value in interaction.text_values.items():
 							if key == "time":
@@ -190,25 +187,37 @@ class ModerModule(commands.Cog):
 
 							await reprimand(interaction, self.member, int(self.title.split(':')[1]), reason)
 							embed.add_field(name = "Всего выговоров в этой ветке", value = str(len(result)+1), inline = False)
+
+							if not isinstance(reprimands_channel, disnake.TextChannel):
+								raise Exception("reprimands_channel в moderators cog is not exist")
 							await reprimands_channel.send(embed=embed)
 
 						else:
 							if self.title == "textmute":
-								await textmute(interaction, self.member, float(formated_time), reason)
+								await textmute(interaction, self.member, float(formated_time if formated_time else 0), reason)
+
+								if not isinstance(muts_channel, disnake.TextChannel):
+									raise Exception("muts_channel в moderators cog is not exist")
 								await muts_channel.send(embed=embed)
 
 								await interaction.author.send("Скопируй и вставь следующее сообщение с прикреплением доказательств в канал \"[mutlog](https://discord.com/channels/1219110919536115802/1219114151566114847)\"!!!")
-								await interaction.author.send(f"```{self.member.id}/{str(formated_time)}/{reason}```")
+								await interaction.author.send(f"```{self.member.id}/{str(formated_time if formated_time else 0)}/{reason}```")
 
 							elif self.title == "voicemute":
-								await voicemute(interaction, self.member, float(formated_time), reason)
+								await voicemute(interaction, self.member, float(formated_time if formated_time else 0), reason)
+
+								if not isinstance(muts_channel, disnake.TextChannel):
+									raise Exception("muts_channel в moderators cog is not exist")
 								await muts_channel.send(embed=embed)
 
 								await interaction.author.send("Скопируй и вставь следующее сообщение с прикреплением доказательств в канал \"[mutlog](https://discord.com/channels/1219110919536115802/1219114151566114847)\"!!!")
 								await interaction.author.send(f"```{self.member.id}/{str(formated_time)}/{reason}```")
 
 							elif self.title == "ban":
-								await ban(interaction, self.member, float(formated_time), reason)
+								await ban(interaction, self.member, float(formated_time if formated_time else 0), reason)
+
+								if not isinstance(bans_channel, disnake.TextChannel):
+									raise Exception("bans_channel в moderators cog is not exist")
 								await bans_channel.send(embed=embed)
 
 								await interaction.author.send("Скопируй и вставь следующее сообщение с прикреплением доказательств в канал \"[banlog](https://discord.com/channels/1219110919536115802/1219110920060407850)\"!!!")
@@ -216,6 +225,9 @@ class ModerModule(commands.Cog):
 
 							elif self.title == "warning":
 								await warning(interaction, self.member, reason)
+
+								if not isinstance(warns_channel, disnake.TextChannel):
+									raise Exception("warns_channel в moderators cog is not exist")
 								await warns_channel.send(embed=embed)
 
 								await interaction.author.send("Скопируй и вставь следующее сообщение с прикреплением доказательств в канал \"[warnlog](https://discord.com/channels/1219110919536115802/1219129098257956947)\"!!!")
@@ -223,8 +235,13 @@ class ModerModule(commands.Cog):
 
 							elif self.title == "changenick":
 								await changenick(interaction, self.member, newnick)
+
+								if not isinstance(logs_channel, disnake.TextChannel):
+									raise Exception("logs_channel в moderators cog is not exist")
 								await logs_channel.send(embed=embed)
 							else:
+								if not isinstance(logs_channel, disnake.TextChannel):
+									raise Exception("logs_channel в moderators cog is not exist")
 								await logs_channel.send(embed=embed)
 
 							counter = 0
@@ -236,6 +253,9 @@ class ModerModule(commands.Cog):
 										counter += count_translate[i] * len(result)
 							if counter>=18:
 								await ban(interaction, self.member, 0, "Набрал больше 18 'очков наказаний'")
+								
+								if not isinstance(bans_channel, disnake.TextChannel):
+									raise Exception("bans_channel в moderators cog is not exist")
 								await bans_channel.send(embed=self.client.AnswEmbed(title=f"Достойное достижение!", description = f"Поздравляем! {self.member.mention}({self.member.id}) наконец набрал целых {counter} очков наказания и получил свою награду: вечный бан!"))
 
 						await interaction.edit_original_response(embed=embed)
