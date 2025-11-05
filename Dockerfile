@@ -1,4 +1,4 @@
-FROM python:3.13-slim
+FROM python:3.12-slim
 
 WORKDIR /usr/src/moderation-bot
 RUN apt update && apt install -y postgresql-client
