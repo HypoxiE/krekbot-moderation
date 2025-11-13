@@ -583,6 +583,9 @@ class MainBot(AnyBots):
 			if (await self.DataBaseManager.model_classes['staff_users'].is_admin_or_moder_by_id(message.author.id, self.DataBaseManager, session)):
 				return
 
+		if message.author.get_role(1228163601026515055):
+			return
+
 		def extract_root_domain(url):
 			ext = tldextract.extract(url)
 			if not ext.domain or not ext.suffix:
