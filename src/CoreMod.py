@@ -6,6 +6,8 @@ import disnake
 from disnake.ext import commands
 from disnake.ext import tasks
 import asyncio
+import aiohttp
+from aiohttp_socks import ProxyConnector
 import sys
 import os
 import shutil
@@ -41,10 +43,14 @@ class AnyBots(commands.Bot):
 
 	'''
 	def __init__(self, DataBaseManager):
+		connector = ProxyConnector.from_url('socks5://v2raya:20170')
+		session = aiohttp.ClientSession(connector=connector, trust_env=True)
 		super().__init__(
 			command_prefix="=",
-			intents=disnake.Intents.all()
+			intents=disnake.Intents.all(),
+			connector=connector
 		)
+
 		self.DataBaseManager = DataBaseManager
 		self.constants = constants
 
@@ -70,6 +76,11 @@ class AnyBots(commands.Bot):
 		await self.change_presence(status=disnake.Status.online, activity=disnake.Game("Работаю"))
 		self.logger.info(f"{datetime.datetime.now().strftime('%H:%M:%S %d-%m-%Y')}::  KrekModBot activated")
 
+	async def close(self):
+		await self.session.close()
+		await self.connector.close()
+		await super().close()
+                
 	def TimeFormater(self, time_str: str = "", *,
 					years: float = 0, months: float = 0, weeks: float = 0, days: float = 0, hours: float = 0, minutes: float = 0, seconds: float = 0,
 					now_timestamp = None):
