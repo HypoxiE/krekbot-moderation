@@ -43,12 +43,12 @@ class AnyBots(commands.Bot):
 
 	'''
 	def __init__(self, DataBaseManager):
-		connector = ProxyConnector.from_url('socks5://v2raya:20170')
-		session = aiohttp.ClientSession(connector=connector, trust_env=True)
+		self.connector = ProxyConnector.from_url('socks5://v2raya:20170')
+		self.session = aiohttp.ClientSession(connector=self.connector, trust_env=True)
 		super().__init__(
 			command_prefix="=",
 			intents=disnake.Intents.all(),
-			connector=connector
+			connector=self.connector
 		)
 
 		self.DataBaseManager = DataBaseManager
