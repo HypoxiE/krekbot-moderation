@@ -597,8 +597,6 @@ class MainBot(AnyBots):
 		if message.author.get_role(1228163601026515055):
 			return
 
-		return
-                
 		def extract_root_domain(url):
 			ext = tldextract.extract(url)
 			if not ext.domain or not ext.suffix:
