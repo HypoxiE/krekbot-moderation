@@ -43,7 +43,7 @@ class AnyBots(commands.Bot):
 
 	'''
 	def __init__(self, DataBaseManager):
-		self.connector = ProxyConnector.from_url('socks5://v2raya:20170')
+		self.connector = ProxyConnector.from_url('socks5://krekbots_s-ui:20170')
 		self.session = aiohttp.ClientSession(connector=self.connector, trust_env=True)
 		super().__init__(
 			command_prefix="=",
