@@ -596,6 +596,7 @@ class MainBot(AnyBots):
 
 		if message.author.get_role(1228163601026515055):
 			return
+        return
 
 		def extract_root_domain(url):
 			ext = tldextract.extract(url)
@@ -650,7 +651,7 @@ async def init_db():
 		max_overflow=10,
 		pool_recycle=300,
 		pool_pre_ping=True,
-		#echo=True,
+        #echo=True,
 	)
 	async with DataBaseEngine.begin() as conn:
 		await conn.run_sync(DataBaseClasses['base'].metadata.create_all)
